@@ -1,89 +1,103 @@
 #!/usr/bin/env Rscript
-	
+
+# DRIMSeq and stageR pipeline for DTU analysis
+# make sure you have Rscript in your path and the R package optparse and the R packes DTU (from this git repo) installed
+# arguments -f, -n, -c and -b need to be in string form separated by colons. E.g.: -n "cohort1:cohort2", e.g.: -c "Control:Case" e.g.: -b "rin:sex:age_years"
+# Run > Rscript drimStage.R -o <outputdir> \
+#        -f <min_transcript_expression:min_gene_expression> \
+#        -g <reference_gtf_file> \
+#        -m <metadatafile> \
+#        -s <salmon_outputs_dir/> \
+#        -z <tximport_scaling_method> \
+#        -n <names_of_cohorts_as_in_metadata_file> \
+#        -c <names_of_group_conditions> \
+#        -d <bool_postHocFilter> \
+#        -t <timestamp_or_outputfile_description> \
+#        -b <covariates> \
+
+
 suppressPackageStartupMessages(require(optparse))
 
-option_list = list(
- make_option(c("-x","--xNoTrFilt"),action="store",default=NULL,type='character',help="Sets the number of transcripts a gene can maximally have to not be filtered out prior to analyses. To reduce complexity."),
- make_option(c("-t","--today"),action="store",default=NA,type='character',help="set timestamp to be used in the output filenames"),
-  make_option(c("-s", "--salmonDir"), action="store", default=NA, type='character',
-              help="provide the path to your salmon data directory (containing each sample data in separate folders"),
-  make_option(c("-m", "--metaData"), action="store", type='character',default=NA,
-              help="provide the path to your phenotype information file (which should include columns sample_id,rin, condition and procedence, if the levels of condition dont match (Control, Case) specify the condition names with the option -c."),
-  make_option(c("-v", "--verbose"), action="store_true", default=TRUE,
-              help="Should the program print extra stuff out? [default %default]"),
-  make_option(c("-q", "--quiet"), action="store_false", dest="verbose",
-              help="Make the program not be verbose."),
-  make_option(c("-e", "--ensemblVersion"), action="store", default="75",
-              help="which version of ensembl db should be used to retrieve gene names or in some cases the whole annotation if gtf file isnt used [default %default]")  ,
-  make_option(c("-n", "--namesCohorts"), action="store",
-              help="Define cohort names in string format separated by colons (e.g. \"NBB:PV\" [default %default]") ,
-  make_option(c("-c", "--conditionGroups"), action="store", default="Control:Case",
-              help="Define condition names in correct order (reference group will be the first, i.e. in default control). Specify as string separated by a colon (\"Control:Case\"  [default %default]") ,
-  make_option(c("-b", "--batchVars"), action="store", default="rin",
-              help="Define variable names of covariates to be included in model design (if more than one, separate by colon (\"rin:age\")) [default %default]") ,
-make_option(c("-g", "--gtfFile"), action="store", default="NA",
-              help="provide path to the gtf file used for annotating the transcripts, should contain all transcripts that are listed in the quant.sf files produced by salmon, preferably the same gtf file used for salmon") ,
-make_option(c("-f", "--filterParams"), action="store", default="10:10",
-              help="option to define filter threshold, enter minimum transcript expression followed by minimum gene expression separated by colon. This will be ussed as arguments for the DRIMSeq::DMFilter function (min_feature_expr and min_samps_gene_expr). Specify as string separated by a colon.  [default %default]") ,
-make_option(c("-o", "--outDir"), action="store", default="./",
-              help="provide directory in which all output RData objects will be stored [default %default]")  ,
-make_option(c("-d", "--postHocFilter"), action="store", default="TRUE",
-            help="Boolean, TRUE: applies post hoc filter, setting pvalues to 1 for all transcripts in sample that have lower than 0.1 sd before 2stage testing with stageR is applied (according to \"Swimming downstream: statistical analysis of differential transcript usage following Salmon quantification\" Love et. al [default %default]")  
+option_list <-  list(
+  make_option(c("-x", "--xNoTrFilt"), action = "store", default = NULL, type = "character", help = "Sets the number of transcripts a gene can maximally have to not be filtered out prior to analyses. To reduce complexity."),
+  make_option(c("-t", "--today"), action = "store", default = NA, type = "character", help = "set timestamp to be used in the output filenames"),
+  make_option(c("-s", "--salmonDir"), action = "store", default = NA, type = "character",
+              help = "provide the path to your salmon data directory (containing each sample data in separate folders"),
+  make_option(c("-m", "--metaData"), action = "store", type = "character", default = NA,
+              help = "provide the path to your phenotype information file (which should include columns sample_id,rin, condition and procedence, if the levels of condition dont match (Control, Case) specify the condition names with the option -c."),
+  make_option(c("-v", "--verbose"), action = "store_true", default = TRUE,
+              help = "Should the program print extra stuff out? [default %default]"),
+  make_option(c("-q", "--quiet"), action = "store_false", dest = "verbose",
+              help = "Make the program not be verbose."),
+  make_option(c("-e", "--ensemblVersion"), action = "store", default = "75",
+              help = "which version of ensembl db should be used to retrieve gene names or in some cases the whole annotation if gtf file isnt used [default %default]"),
+  make_option(c("-n", "--namesCohorts"), action = "store",
+              help = "Define cohort names in string format separated by colons (e.g. \"NBB:PV\" [default %default]"),
+  make_option(c("-c", "--conditionGroups"), action = "store", default = "Control:Case",
+              help = "Define condition names in correct order (reference group will be the first, i.e. in default control). Specify as string separated by a colon (\"Control:Case\"  [default %default]"),
+  make_option(c("-b", "--batchVars"), action = "store", default = "rin",
+              help = "Define variable names of covariates (must be colnames in metadata file) to be included in model design (if more than one, separate by colon (\"rin:age\")) [default %default]"),
+make_option(c("-g", "--gtfFile"), action = "store", default = "NA",
+              help = "provide path to the gtf file used for annotating the transcripts, should contain all transcripts that are listed in the quant.sf files produced by salmon, preferably the same gtf file used for salmon"),
+make_option(c("-f", "--filterParams"), action = "store", default = "10:10",
+              help = "option to define filter threshold, enter minimum transcript expression followed by minimum gene expression separated by colon. This will be used as arguments for the DRIMSeq::DMFilter function (min_feature_expr and min_samps_gene_expr). Specify as string separated by a colon.  [default %default]"),
+make_option(c("-o", "--outDir"), action = "store", default = "./",
+              help = "provide directory in which all output objects will be stored [default %default]"),
+make_option(c("-d", "--postHocFilter"), action = "store", default = "TRUE",
+            help = "Boolean, TRUE: applies post hoc filter, setting pvalues to 1 for all transcripts in sample that have lower than 0.1 sd before 2stage testing with stageR is applied (according to \"Swimming downstream: statistical analysis of differential transcript usage following Salmon quantification\" Love et. al [default %default]")  
 ,
-make_option(c("-z","--zcalingMethod"), action="store", default="scaledTPM",type="character",help="String specifying scaling method used to scale TPMs with tximport (possible: <scaledTPM,dtuScaledTPM>[default %default]")  
+make_option(c("-z", "--zcalingMethod"), action = "store", default = "scaledTPM",  type = "character", help = "String specifying scaling method used to scale TPMs with tximport (possible: <scaledTPM,dtuScaledTPM>[default %default]")  
 )
-opt = parse_args(OptionParser(option_list=option_list))
-if(opt$v){
-	print(opt)
+
+# parse commandline arguments
+opt <- parse_args(OptionParser(option_list = option_list))
+if (opt$v) {
+ print(opt)
 }
 
-####################Load libraries
-if(!require(ddpcr)){install.packages(c("ddpcr", "v1.9"),repos='http://cran.us.r-project.org')}
-load_dependencies<-function()
-{
-  if(!require(readr)){install.packages("readr")}
-  if(!require(DTU)){install.packages("/data/content/RNAseq/dtu/intersect/Rcode/DTU_1.0.tar.gz",repos=NULL)}
-  if(!require(crayon)){install.packages("crayon")}
-  if(!require(tidyverse)){install.packages("tidyverse")}
-  if(!require(stringr)){install.packages("stringr")}
-  if(!require(DRIMSeq)){
-    source("https://bioconductor.org/biocLite.R")
-    biocLite("DRIMSeq")}
-  if(!require(stageR)){source("https://bioconductor.org/biocLite.R")
-    biocLite("stageR")}
-  if(!require(tximport)){source("https://bioconductor.org/biocLite.R")
-    biocLite("tximport")}
-  if(!require(GenomicFeatures)){source("https://bioconductor.org/biocLite.R")
-    biocLite("GenomicFeatures")}
-  if(!require(DEXSeq)){source("https://bioconductor.org/biocLite.R")
-    biocLite("DEXSeq")}
-  library(DTU)
+# load dependencies
+if (!require(ddpcr)) { 
+ install.packages(c("ddpcr", "v1.9"), repos = 'http://cran.us.r-project.org')
 }
-quiet(load_dependencies())
+load_dependencies<-function() {
+ if(!require(readr)) {install.packages("readr")}
+ if(!require(DTU)) {install.packages("../DTU/DTU_1.0.tar.gz",repos=NULL)}
+ if(!require(crayon)) {install.packages("crayon")}
+ if(!require(tidyverse)) {install.packages("tidyverse")}
+ if(!require(stringr)) {install.packages("stringr")}
+ if(!require(DRIMSeq)) {
+   source("https://bioconductor.org/biocLite.R")
+   biocLite("DRIMSeq") }
+ if(!require(stageR)) {source("https://bioconductor.org/biocLite.R")
+   biocLite("stageR") }
+ if(!require(tximport)) {source("https://bioconductor.org/biocLite.R")
+   biocLite("tximport") }
+ if(!require(GenomicFeatures)) {source("https://bioconductor.org/biocLite.R")
+   biocLite("GenomicFeatures") }
+ if(!require(DEXSeq)) {source("https://bioconductor.org/biocLite.R")
+   biocLite("DEXSeq") }
+ library(DTU)
+}
+ddpcr::quiet(load_dependencies())
 
-
-#################creating output directories##################
-##############################################################
-
+# create output directory structure
 print("creating output dirs:")
-#for the output of the DTU analysis tool
+# for the output of the DTU analysis tool
 dir.create(file.path(opt$o, "Ds"))
 print(file.path(opt$o, "Ds"))
-#for the ouput of stageR (and its object)
+# for the ouput of stageR (and its object)
 dir.create(file.path(opt$o, "Ss"))
 print(file.path(opt$o, "Ss"))
+# for the result gene lists after stageR but with both sig. and non significant transcripts
 dir.create(file.path(opt$o, "genes"))
 print(file.path(opt$o, "genes"))
 
-###################################FUNCTIONS############################################
-#tool specific helper functions
+# tool specific helper functions
+no.na <- function(x) ifelse(is.na(x), 1, x)
 
-no.na <- function(x) ifelse(is.na(x),1,x)
-
-#extract DRIMSeq result to be able to use stageR
+# extract DRIMSeq result to be able to use stageR
 extract_res <- function(Ds) {
-
-#extract results from drimseq obj, on gene and transcript level, set NA pvalues to 1
+# extract results from drimseq obj, on gene and transcript level, set NA pvalues to 1
  Rs <- lapply(Ds,function(d) {
   res <- DRIMSeq::results(d)
   res.txp <- DRIMSeq::results(d, level = "feature")
@@ -95,10 +109,11 @@ extract_res <- function(Ds) {
  return(Rs)
 }
 
-#helper function for optional postHoc filter
+# helper function for optional postHoc filter
+# as described in "Swimming downstream: statistical analysis of differential transcript usage following Salmon quantification" Love et al. 
 getSampleProportions <- function(d) {
- cts <- as.matrix(subset(counts(d), select = -c(gene_id, feature_id)))
- gene.cts <- rowsum(cts, counts(d)$gene_id)
+ cts <- as.matrix(subset(DRIMSeq::counts(d), dplyr::select = -c(.data$gene_id, .data$feature_id)))
+ gene.cts <- rowsum(cts, DRIMSeq::counts(d)$gene_id)
  total.cts <- gene.cts[match(counts(d)$gene_id, rownames(gene.cts)), ]
  cts / total.cts
 }
@@ -158,7 +173,7 @@ if (!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g)) {
  filtInfo <- lapply(data$obj, function(cohortObj) { return(cohortObj$filtInfo) })
  names(filtInfo) <- names(data$info)
  #filter model and fit with DRIMSeq
- Res <- DTU::runDrim(data$tx_lst, data$annot, data$info, data$obj, covariates = covariates)
+ Res <- DTU::run_drim(data$info, data$obj, covariates = covariates)
  #set timestamp for saving objects
  today <- as.character(opt$t)
  #run stageR

@@ -49,10 +49,10 @@ objs <- lapply(objs,extract_sig)
 names(objs) <- c("drim_gene_lsts","dex_gene_lsts")     
 
 #split by cohorts
-objs_byCohort <-splitBy_cohorts(cohort_names=split_colon(opt$cohortNames),objs=objs)
+objs_byCohort <-split_by_cohorts(cohort_names=split_colon(opt$cohortNames),objs=objs)
 
 #intersect and get gene annotation (additional info) from ensembldb
-toolInt<-apply_tool_intersect(objs_byCohort=objs_byCohort,tx=T,opt=opt)
+toolInt<-apply_tool_intersect(objs_by_cohort=objs_byCohort,tx=T,opt=opt)
 
 # Ds unfiltered, both tools together 
 Ds_unfilt <- lapply(split_colon(opt$u),readRDS)

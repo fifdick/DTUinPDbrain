@@ -104,8 +104,8 @@ pScreen <- r$qval
 names(pScreen) <- names(r$qval)
 tx2gene <- as.data.frame(r$dxr[,c("featureID","groupID")])
 #pScreen checks gene-level pvalues which are already adjusted when aggregated with the DEXSeq::perGeneQValue function
-stageRObj <- stageRTx(pScreen=pScreen,pConfirmation=pConfirmation,pScreenAdjusted=TRUE,tx2gene)
-stageRObj <- stageWiseAdjustment(stageRObj,method="dtu",alpha=alpha)
+stageRObj <- stageR::stageRTx(pScreen=pScreen,pConfirmation=pConfirmation,pScreenAdjusted=TRUE,tx2gene)
+stageRObj <- stageR::stageWiseAdjustment(stageRObj,method="dtu",alpha=alpha)
 
 return(stageRObj)
 	     })
@@ -129,7 +129,7 @@ if(!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g))
   names(filtInfo) <- names(data$info) 
 
   #run DEXSeq
-  Res <- DTU::run_dtu(data$info,data$obj,covariates = covariates) 
+  Res <- DTU::run_dex(data$info,data$obj,covariates = covariates) 
   
   #run stageR
   Ss <- stageTest(Res) 

@@ -57,13 +57,13 @@ if (opt$v) {
 
 # load dependencies
 if (!require(ddpcr)) { 
- install.packages(c("ddpcr", "v1.9"), repos = 'http://cran.us.r-project.org')
+ install.packages(c("ddpcr", "v1.9"), repos = "http://cran.us.r-project.org")
 }
 load_dependencies<-function() {
- if (!require(readr)) { install.packages("dplyr") }
+ if (!require(dplyr)) { install.packages("dplyr") }
  if (!require(readr)) { install.packages("readr") }
- if (!require(readr)) { install.packages("rlang") }
- if (!require(DTU)) { install.packages("../DTU/DTU_1.0.tar.gz",repos=NULL) }
+ if (!require(rlang)) { install.packages("rlang") }
+ if (!require(DTU)) { install.packages("../DTU/DTU_1.0.tar.gz", repos = NULL) }
  if (!requireNamespace("BiocManager", quietly = TRUE)) { install.packages("BiocManager") }
  if (!require(DRIMSeq)) { BiocManager::install("DRIMSeq") }
  if (!require(stageR)) { BiocManager::install("stageR") }
@@ -120,11 +120,11 @@ after_drim_filter <- function(Rs,Ds) {
  return(Rs)
 }
 
-stageTest <- function(Ds, alpha = 0.05, postFilt = FALSE) {
+stage_test <- function(Ds, alpha = 0.05, post_filt = FALSE) {
  #extract result
  Rs <- extract_res(Ds)
  #apply optional postHoc filter
- if  (postFilt == TRUE) {
+ if  (post_filt == TRUE) {
   Rs <- after_drim_filter(Rs,Ds)
   }
  Ss <- lapply(Rs, function(res) {
@@ -145,27 +145,25 @@ stageTest <- function(Ds, alpha = 0.05, postFilt = FALSE) {
 }
 
 # parameters for DRIMSeq::DMFilter
-filter_params <- as.numeric(split_colon(opt$f))
+filter_params <- as.numeric(DTU::split_colon(opt$f))
 # covariates which will be added to the model
-covariates <- as.list(split_colon(opt$b))
-# optional postHoc filter only used with DRIMSeq
-postHocFilter <- ifelse(as.logical(opt$postHocFilter), "postHocFilter", "nopostHocFilter")
+covariates <- as.list(DTU::split_colon(opt$b))
 
-
+# run all functions
 if (!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g)) {
  #create sample info matrix, create annotation matrix, create and import counts
  data <- DTU::prep_dtu(opt)
  #separate unfiltered objects and filter parameter for downstream analysis
- Ds_unfilt <-  lapply(data$obj, function(cohortObj) { return(cohortObj$Ds_unfilt) })
+ Ds_unfilt <-  lapply(data$obj, function(cohort_obj) { return(cohort_obj$Ds_unfilt) })
  names(Ds_unfilt) <- names(data$info)
- filtInfo <- lapply(data$obj, function(cohortObj) { return(cohortObj$filtInfo) })
- names(filtInfo) <- names(data$info)
+ filt_info <- lapply(data$obj, function(cohort_obj) { return(cohort_obj$filt_info) })
+ names(filt_info) <- names(data$info)
  #filter model and fit with DRIMSeq
  Res <- DTU::run_drim(data$info, data$obj, covariates = covariates)
  #set timestamp for saving objects
  today <- as.character(opt$t)
  #run stageR
- Ss <- stageTest(Res, postFilt = as.logical(opt$postHocFilter))
+ Ss <- stage_test(Res, post_filt = as.logical(opt$postHocFilter))
  names(Ss) <- names(Res)
  gene_lsts <- lapply(Ss, function(s) {
   lst <- stageR::getAdjustedPValues(s, onlySignificantGenes = TRUE, order = TRUE)
@@ -175,7 +173,7 @@ if (!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g)) {
  #save objects
  saveRDS(Res, file = paste0(opt$o, "/Ds/Ds_", today, ".rds"))
  saveRDS(Ds_unfilt, file = paste0(opt$o, "/Ds/Ds_preFilt_", today, ".rds"))
- saveRDS(filtInfo, file = paste0(opt$o, "/Ds/paramFilt_", today, ".rds"))
+ saveRDS(filt_info, file = paste0(opt$o, "/Ds/paramFilt_", today, ".rds"))
  saveRDS(Ss, file = paste0(opt$o, "/Ss/Ss_", today, ".rds"))
  saveRDS(gene_lsts, file = paste0(opt$o, "/genes/genelist_", today, ".rds"))
  }

@@ -24,7 +24,7 @@ csv="./metaData/phenoData.csv"
 
 #################################################################
 condition_names="Control:Case"
-cohort_names="PV:NBB"
+cohort_names="discovery:replication"
 batch="rin:age_years:sex:Microglia_Genes:Oligo_Genes"
 filter="10:10"
 scalingMethod="scaledTPM"

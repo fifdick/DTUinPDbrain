@@ -1,4 +1,4 @@
-procedence	age_years	sex	condition	rin	Microglia_Genes	Oligo_Genes	cohort	sample_id
+brain_bank	age_years	sex	condition	rin	Microglia_Genes	Oligo_Genes	procedence	sample_id
 NBB	85	F	Control	6.6	0.498742052322009	0.997547355402549	replication	Ctr-23
 NBB	84	M	Case	8.7	0.324012130675057	0.00183286744343487	replication	PD-37
 NBB	84	F	Control	6.4	0.418327565162726	0.55659052362947	replication	Ctr-24

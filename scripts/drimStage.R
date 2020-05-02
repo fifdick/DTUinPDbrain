@@ -102,7 +102,7 @@ extract_res <- function(Ds) {
 # helper function for optional postHoc filter
 # as described in "Swimming downstream: statistical analysis of differential transcript usage following Salmon quantification" Love et al. 
 getSampleProportions <- function(d) {
- cts <- as.matrix(subset(DRIMSeq::counts(d), dplyr::select = -c(.data$gene_id, .data$feature_id)))
+ cts <- as.matrix(DRIMSeq::counts(d) %>% dplyr::select(-c(.data$gene_id, .data$feature_id)))
  gene.cts <- rowsum(cts, DRIMSeq::counts(d)$gene_id)
  total.cts <- gene.cts[match(counts(d)$gene_id, rownames(gene.cts)), ]
  cts / total.cts

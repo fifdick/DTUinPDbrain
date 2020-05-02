@@ -42,7 +42,7 @@ pipes=($drim $dex)
 timestamp=$(date +%s)
 
 LOG_FILE="$timestamp"
-LOG_FILE="./"$LOG_FILE".txt"
+LOG_FILE="./logs/"$LOG_FILE".txt"
 
 exec > >(tee -a ${LOG_FILE} )
 exec 2> >(tee -a ${LOG_FILE} >&2)

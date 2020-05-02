@@ -3,7 +3,7 @@
 # DEXSeq and stageR pipeline for DTU analysis
 # make sure you have Rscript in your path and the R package optparse and the R packes DTU (from this git repo) installed
 # arguments -f, -n, -c and -b need to be in string form separated by colons. E.g.: -n "cohort1:cohort2", e.g.: -c "Control:Case" e.g.: -b "rin:sex:age_years"
-# Run > Rscript drimStage.R -o <outputdir> \
+# Run > Rscript dexStage.R -o <outputdir> \
 #        -f <min_transcript_expression:min_gene_expression> \
 #        -g <reference_gtf_file> \
 #        -m <metadatafile> \
@@ -11,7 +11,6 @@
 #        -z <tximport_scaling_method> \
 #        -n <names_of_cohorts_as_in_metadata_file> \
 #        -c <names_of_group_conditions> \
-#        -d <bool_postHocFilter> \
 #        -t <timestamp_or_outputfile_description> \
 #        -b <covariates> \
 
@@ -142,7 +141,7 @@ if (!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g)) {
  # save objects
  saveRDS(Res, file = paste0(opt$o, "/Ds/Ds_", today, ".rds"))
  saveRDS(Ds_unfilt, file = paste0(opt$o, "/Ds/Ds_preFilt_", today, ".rds"))
- saveRDS(filtInfo, file = paste0(opt$o, "/Ds/paramFilt_", today, ".rds"))
+ saveRDS(filt_info, file = paste0(opt$o, "/Ds/paramFilt_", today, ".rds"))
  saveRDS(Ss, file = paste0(opt$o, "/Ss/Ss_", today, ".rds"))
  saveRDS(gene_lsts, file = paste0(opt$o, "/genes/genelist_", today, ".rds"))
 }

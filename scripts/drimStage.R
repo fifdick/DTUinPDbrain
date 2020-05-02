@@ -60,23 +60,13 @@ if (!require(ddpcr)) {
  install.packages(c("ddpcr", "v1.9"), repos = 'http://cran.us.r-project.org')
 }
 load_dependencies<-function() {
- if(!require(readr)) {install.packages("readr")}
- if(!require(DTU)) {install.packages("../DTU/DTU_1.0.tar.gz",repos=NULL)}
- if(!require(crayon)) {install.packages("crayon")}
- if(!require(tidyverse)) {install.packages("tidyverse")}
- if(!require(stringr)) {install.packages("stringr")}
- if(!require(DRIMSeq)) {
-   source("https://bioconductor.org/biocLite.R")
-   biocLite("DRIMSeq") }
- if(!require(stageR)) {source("https://bioconductor.org/biocLite.R")
-   biocLite("stageR") }
- if(!require(tximport)) {source("https://bioconductor.org/biocLite.R")
-   biocLite("tximport") }
- if(!require(GenomicFeatures)) {source("https://bioconductor.org/biocLite.R")
-   biocLite("GenomicFeatures") }
- if(!require(DEXSeq)) {source("https://bioconductor.org/biocLite.R")
-   biocLite("DEXSeq") }
- library(DTU)
+ if (!require(readr)) { install.packages("dplyr") }
+ if (!require(readr)) { install.packages("readr") }
+ if (!require(readr)) { install.packages("rlang") }
+ if (!require(DTU)) { install.packages("../DTU/DTU_1.0.tar.gz",repos=NULL) }
+ if (!requireNamespace("BiocManager", quietly = TRUE)) { install.packages("BiocManager") }
+ if (!require(DRIMSeq)) { BiocManager::install("DRIMSeq") }
+ if (!require(stageR)) { BiocManager::install("stageR") }
 }
 ddpcr::quiet(load_dependencies())
 
@@ -130,7 +120,7 @@ after_drim_filter <- function(Rs,Ds) {
  return(Rs)
 }
 
-stageTest <- function(Ds, alpha = 0.05, postFilt=F) {
+stageTest <- function(Ds, alpha = 0.05, postFilt = FALSE) {
  #extract result
  Rs <- extract_res(Ds)
  #apply optional postHoc filter
@@ -154,13 +144,11 @@ stageTest <- function(Ds, alpha = 0.05, postFilt=F) {
  return(Ss)
 }
 
-
-###### argument variables###################
-#parameters for DRIMSeq::DMFilter
+# parameters for DRIMSeq::DMFilter
 filter_params <- as.numeric(split_colon(opt$f))
-#covariates which will be added to the model
+# covariates which will be added to the model
 covariates <- as.list(split_colon(opt$b))
-#optional postHoc filter only used with DRIMSeq
+# optional postHoc filter only used with DRIMSeq
 postHocFilter <- ifelse(as.logical(opt$postHocFilter), "postHocFilter", "nopostHocFilter")
 
 

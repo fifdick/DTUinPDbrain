@@ -38,7 +38,7 @@ R CMD build DTU
 # make the pipeline executable
 chmod +x runDTU.sh
 # potentially change parameters according to the instructions in runDTU.sh
-# make sure Rcript is in your path as it will be called by the bash script
+# make sure Rscript is in your path as it will be called by the bash script
 ./runDTU.sh
 ```  
 
@@ -52,12 +52,12 @@ chmod +x runDTU.sh
 for all samples in the study are in `./rawData/`. Where each subdirectory holds the estimates for the sample identified with the subdir name.  
 * For annotation of the transcripts during DTU analysis with DEXSeq and DRIMSeq (when applying tximport::tximport for the tx2gene parameter), we used the reference file provided in `./referenceData`.
 (Zipped to be able to fit on github.)  
-* Meta data including all covariates used in the model design are supplied in the .csv in `./metaData". The sample IDs match the subdirectory names in `./rawData/`. The cell type estimations listed as covariates ("Microglia\_Genes" and "Oligo\_Genes") have been estimated as described in the paper. The code for the calculation can be found on: https://git.app.uib.no/neuromics/cell-composition-rna-pd. The estimation has be performed on the replication and discovery cohort separately, and all samples of each cohort where included.  
+* Meta data including all covariates used in the model design are supplied in the .csv in `./metaData`. The sample IDs match the subdirectory names in `./rawData/`. The cell type estimations listed as covariates ("Microglia\_Genes" and "Oligo\_Genes") have been estimated as described in the paper. The code for the calculation can be found on: https://git.app.uib.no/neuromics/cell-composition-rna-pd. The estimation has be performed on the replication and discovery cohort separately, and all samples of each cohort where included.  
 * The log of final run of the pipeline can be found in `./logs`.
 * Zipped .rds objects are in `./results/rds`. These hold all results that are necessary to generate tables and figures presented in the paper (except the qPCR wetlab results). They were obtained by running the script `./runDTU.sh`. All arguments and parameters that were used to generate these results can be found in the log file `./log/04-05-20.txt`.  
 * The directory `./DTU` contains all helper functions collected into an R package. These are used in both the general pipeline (runDTU.sh) and in the .Rmd file that generates tables and figures. 
 * The directory `./scripts` holds Rscripts which are called by `./runDTU.sh` to perferm the general DTU analysis. Basically just wrapper functions around DRIMSeq and DEXSeq functions. The results of these are then assembled by `./scripts/bindToolRes.R` to generate the results found in `./results/rds`. These hold all R objects needed to create figures and tables in `./makeFigures.Rmd`.  
-* Differential gene expression results from ["Common gene expression signatures in Parkinson’s disease are driven by changes in cell composition"]("https://actaneurocomms.biomedcentral.com/articles/10.1186/s40478-020-00932-7") which are used to compare DTU results to DGE results are in `./results/external/dge_results/`
+* Differential gene expression results from ["Common gene expression signatures in Parkinson’s disease are driven by changes in cell composition"](https://actaneurocomms.biomedcentral.com/articles/10.1186/s40478-020-00932-7) which are used to compare DTU results to DGE results are in `./results/external/dge_results/`
 * qPCR results are summerised in a .csv in `./results/external/qPCR/`
 * Code used to generate plots and tables is in `./makeFigures.Rmd`.  
 

@@ -76,9 +76,9 @@ drim_res <- lapply(Ds$Ds_drim, function(ds) {
 
 saveRDS(objs_by_cohort, file = paste0(opt$o, "objs_byCohort.rds"))
 saveRDS(tool_int, file = paste0(opt$o, "drim_dex_toolInt.rds"))
-saveRDS(dexRes, file = paste0(opt$o, "dexRes.rds"))
-saveRDS(drimRes, file = paste0(opt$o, "drimRes.rds"))
+saveRDS(dex_res, file = paste0(opt$o, "dexRes.rds"))
+saveRDS(drim_res, file = paste0(opt$o, "drimRes.rds"))
 saveRDS(Ds, file = paste0(opt$o, "Ds.rds"))
 saveRDS(Ds_unfilt, file = paste0(opt$o, "Ds_unfilt.rds"))
-saveRDS(filtInfo, file = paste0(opt$o, "filtInfo.rds"))
+saveRDS(filt_info, file = paste0(opt$o, "filtInfo.rds"))
 

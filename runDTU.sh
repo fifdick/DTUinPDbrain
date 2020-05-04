@@ -40,7 +40,7 @@ pipes=($drim $dex)
 
 
 timestamp=$(date +%s)
-
+timestamp="04-05-20"
 LOG_FILE="$timestamp"
 LOG_FILE="./logs/"$LOG_FILE".txt"
 

@@ -10,10 +10,41 @@ This repository holds all code and data to reproduce results, figures and tables
 * bash 
 * All dependencies listed in DESCRIPTION of the DTU R package
 
-## How to
+## How to..  
+
+### Use uploaded results objects to generate figures and tables:    
+In your terminal execute:
 ```
+git clone https://github.com/fifdick/DTU_in_PD_brain.git
+cd DTU_in_PD_brain
+tar -xzf ./results/rds/rds.tar.gz
+R CMD INSTALL DTU 
+R CMD check DTU
+R CMD build DTU
+```
+In your R editor open `makeFigures.Rmd` and follow the instructions there.
+
+### Rerun the analysis from scratch:  
 
 ```
+git clone https://github.com/fifdick/DTU_in_PD_brain.git
+cd DTU_in_PD_brain
+# unpack the reference .gtf file 
+tar -xzf ./referenceData/extract_me_gtf.gz
+# install the R package to your R
+R CMD INSTALL DTU 
+R CMD check DTU
+R CMD build DTU
+# make the pipeline executable
+chmod +x runDTU.sh
+# potentially change parameters according to the instructions in runDTU.sh
+# make sure Rcript is in your path as it will be called by the bash script
+./runDTU.sh
+# The analysis is complete when "Sucessfully intersected gene lists" in stdout
+# Results are in "./results/rds/", direct tool results are in the respective folders in "./results/".
+# open "./makeFigures.Rmd" in your R editor and follow the instructions there
+```
+
 
 ## Content
 

@@ -57,6 +57,8 @@ for all samples in the study are in `./rawData/`. Where each subdirectory holds 
 * Zipped .rds objects are in `./results/rds`. These hold all results that are necessary to generate tables and figures presented in the paper (except the qPCR wetlab results). They were obtained by running the script `./runDTU.sh`. All arguments and parameters that were used to generate these results can be found in the log file `./log/04-05-20.txt`.  
 * The directory `./DTU` contains all helper functions collected into an R package. These are used in both the general pipeline (runDTU.sh) and in the .Rmd file that generates tables and figures. 
 * The directory `./scripts` holds Rscripts which are called by `./runDTU.sh` to perferm the general DTU analysis. Basically just wrapper functions around DRIMSeq and DEXSeq functions. The results of these are then assembled by `./scripts/bindToolRes.R` to generate the results found in `./results/rds`. These hold all R objects needed to create figures and tables in `./makeFigures.Rmd`.  
+* Differential gene expression results from [Common gene expression signatures in Parkinson’s disease are driven by changes in cell composition]("https://actaneurocomms.biomedcentral.com/articles/10.1186/s40478-020-00932-7") which are used to compare DTU results to DGE results are in `./results/external/dge_results/`
+* qPCR results are summerised in a .csv in `./results/external/qPCR/`
 * Code used to generate plots and tables is in `./makeFigures.Rmd`.  
 
 ## Built with 

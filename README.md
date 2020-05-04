@@ -40,11 +40,10 @@ chmod +x runDTU.sh
 # potentially change parameters according to the instructions in runDTU.sh
 # make sure Rcript is in your path as it will be called by the bash script
 ./runDTU.sh
-# The analysis is complete when "Sucessfully intersected gene lists" in stdout
-# Results are in "./results/rds/", direct tool results are in the respective folders in "./results/".
-# open "./makeFigures.Rmd" in your R editor and follow the instructions there
+```  
+The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.  
+open `./makeFigures.Rmd` in your R editor and follow the instructions there.
 ```
-
 
 ## Content
 

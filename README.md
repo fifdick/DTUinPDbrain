@@ -12,7 +12,7 @@ This repository holds all code and data to reproduce results, figures and tables
 
 ## How to..  
 
-### Use uploaded results objects to generate figures and tables:    
+### Use uploaded result objects (.rds) to generate figures and tables:    
 In your terminal execute:
 ```
 git clone https://github.com/fifdick/DTU_in_PD_brain.git
@@ -41,9 +41,10 @@ chmod +x runDTU.sh
 # make sure Rcript is in your path as it will be called by the bash script
 ./runDTU.sh
 ```  
-The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.  
-open `./makeFigures.Rmd` in your R editor and follow the instructions there.
-```
+
+* The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.  
+* Open `./makeFigures.Rmd` in your R editor and follow the instructions there.
+
 
 ## Content
 

@@ -5,9 +5,9 @@ This repository holds all code and data to reproduce results, figures and tables
 
 ## Prerequisites
 
-* R >= 3.6.0  
-* Rscript in path 
-* bash 
+* [R >= 3.6.0] (https://www.r-project.org/)
+* Rscript in "$PATH" 
+* [Bash] (https://www.gnu.org/software/bash/) 
 * All dependencies listed in DESCRIPTION of the DTU R package
 
 ## How to..  

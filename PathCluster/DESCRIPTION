@@ -1,0 +1,15 @@
+Package: PathCluster
+Type: Package
+Version: 0.2
+Author: Fiona Dick
+Maintainer: Fiona Dick <fiona.dick91@gmail.com>
+Title: Pathway (gene-set) clustering
+Description: PathCluster reduces the redundancy in the pathways resulting from an enrichment analysis
+Imports: stats, grDevices, dplyr, qdapTools, irr, ggplot2, treemap,
+        GO.db, AnnotationDbi
+Suggests: knitr, rmarkdown
+License: License: GPL-3
+Encoding: UTF-8
+NeedsCompilation: no
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr

@@ -1,0 +1,44 @@
+Package: DTU
+Version: 1.0
+Title: DTU in PD
+Author: Fiona Dick
+Maintainer: Fiona Dick <fiona.dick91@gmail.com>
+Description: Utility functions used for analysis of RNASeq data in (Differential transcript usage in the Parkinson’s disease brain). Wrapper functions for DTU analysis with DRIMSeq and DEXSeq followed by stageR.
+Depends: R (>= 3.6.0)
+Imports: AnnotationFilter,
+	BiocManager,
+	biomaRt,
+	crayon,
+	DESeq2,
+	DEXSeq,
+	DRIMSeq,
+	dplyr,
+	ensembldb,
+	gdata,
+	GenomeGraphs,
+	GenomicFeatures,
+	ggplot2,
+	ggpubr,
+	ggsignif,
+	grDevices,
+	gridExtra,
+	magrittr,
+	readr,
+	reshape2,
+	rlang,
+	seqinr,
+	stageR,
+	stats,
+	stringr,
+	stringi,
+	SummarizedExperiment,
+	tximport,
+	tibble,
+	tidyr,
+	utils
+License: GPL-3
+VignetteBuilder: knitr
+Suggests: knitr
+NeedsCompilation: no
+RoxygenNote: 7.0.0
+Encoding: UTF-8 

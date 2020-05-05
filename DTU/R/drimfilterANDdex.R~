@@ -1,0 +1,79 @@
+###########################build DRIMSeq object#############################
+#'Build drimseq object and filter
+#'
+#' @param tx_lst <df> or list of df transcript abundances tximport object, or list of transcript abundance tximport objects (per cohort one df)
+#' @param annot <df> or list of df annotation df indicating transcript and gene id ( with columns target_id, parent_id and ntx (# of transcripts ), or list of annotation dfs, if annotation file is distinct for cohort
+#' @param info <df> or list of df with 3 columns (sample_id,condition,rin) 
+#' @param tx_expr <numeric> min threshold for filtering transcript by expr value
+#' @param gene_expr <numeric> min threshold of gene expression for filtering
+#' @param covariates <list> names of variables to include into model design (actual values must be present in info)
+#' @return DRIMseq object or list of DRIMseq obj after applying DMPrecision, DMFit and DMTest
+#' 
+#' 
+#' TODO: if covariates is null
+drimfilterANDdex <- function(tx_lst,annot,info,tx_expr,gene_expr,covariates=list("rin"))
+{
+  stopifnot(is.list(covariates))
+  sapply(info,function(i){stopifnot(covariates %in% colnames(i))})
+  stopifnot(is.numeric(tx_expr))
+  stopifnot(is.numeric(gene_expr))
+  
+ 
+  
+  countData <- lapply(seq(1,length(tx_lst)), function(i){
+    counts <- data.frame(gene_id=annot[[i]]$GENEID,feature_id=annot[[i]]$TXNAME,tx_lst[[i]]$counts)
+    return(counts)
+  })
+  Ds <-lapply(seq(1,length(info)),function(i){ 	
+    d <- dmDSdata(counts=countData[[i]],samples=info[[i]])
+    print(d)	
+    return(d)
+  })
+  names(Ds) <- names(info)
+  cat(crayon::blue( "Applying filter"))
+  #TODO possibility to introduce some genreralization here to adjust the filter depending on the the number of samples (n) loosen filter threshold a bit if n is greater
+  Ds <- lapply(Ds,function(d){
+    n.small<-min(table(DRIMSeq::samples(d)$condition))
+    n <- nrow(DRIMSeq::samples(d))
+    d<-dmFilter(d,
+                min_samps_feature_expr=n.small,min_feature_expr=tx_expr,
+                min_samps_feature_prop=n.small,min_feature_prop=0.1,
+                min_samps_gene_expr=n,min_gene_expr=gene_expr)
+    cat(crayon::blue( "Distribution of isoforms per gene"))
+    print(table(table(DRIMSeq::counts(d)$gene_id)))
+    return(d)
+  })
+  names(Ds) <- names(info)
+  
+  #prepare covariate names for formula
+  covariates<-lapply(covariates,function(c){paste0(as.character(c),":exon + ")})
+  
+  DXs <- lapply(Ds,function(d)
+  {
+    design<-formula(paste("~sample + exon +",stringi::stri_flatten(covariates),"condition:exon"))
+    print("DESGIN:")
+    print(design)
+    sample.data <- DRIMSeq::samples(d)
+    count.data <- round(as.matrix(counts(d)[,-c(1:2)]))
+    dx <- DEXSeqDataSet(countData=count.data,
+                        sampleData=sample.data,
+                        design=design,
+                        featureID=counts(d)$feature_id,groupID=counts(d)$gene_id)
+                        #~sample + exon + rin:exon + condition:exon,
+                       
+    system.time({
+      dx <- estimateSizeFactors(dx)
+      dx <- estimateDispersions(dx,quiet=FALSE,maxit=500)
+      #dx <- nbinomLRT(dx,reduced=~sample +exon)
+      #updated version of "swimming" suggests to use testForDEU insteadt of negative binomial liklihood ratio test
+      #actually doesnt matter just internally calls the same nbinom func from DESeq2
+      dx <- testForDEU(dx,reduced=~sample + exon + rin:exon)
+      dx <- estimateExonFoldChanges(dx, fitExpToVar="condition")
+      
+      
+    })
+    return(dx)
+  })
+  names(DXs) <- names(Ds)
+  return(DXs)
+}

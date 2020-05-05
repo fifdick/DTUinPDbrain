@@ -1,0 +1,1189 @@
+---
+title: "Figures and tables"
+author: "Fiona Dick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true # table of content true
+    toc_depth: 4 # upto three depths of headings (specified by #, ## and ###)
+    fumber_sections: true  ## if you want number sections at each table header
+    theme: united  # many options for theme, this one is my favorite.
+    highlight: tango  # specifies the syntax highlighting style
+    fig_width: 6
+    fig_height: 7
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Data
+
+## Loading dependencies 
+
+Make sure you installed './DTU' and './PathCluster'.  
+
+```{r dependencies}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(ggpubr, patchwork, ggplotify, VennDiagram, cowplot, matrixStats,
+ggrepel, DTU, STRINGdb, knitr, Unicode, readr, DTU, tidyr, dplyr, ggplot2,
+viridis, ggridges, aggregation, PathCluster, gridExtra, kableExtra, reshape2,
+DRIMSeq, DEXSeq, wiggleplotr)
+colorFriendly <- c("pink" = "#CC79A7", "green" = "#009E73", "yellow" = "#F0E442", "orange" = "#E69F00", "blue" = "#0072B2")
+reloadDTU <- function(){
+ detach(name="package:DTU",unload=T);
+ library(DTU)
+}  
+```
+
+## Load data  
+
+We need the metadata file with all sample information, An output directory for all plots and tables, 
+the qPCR results, the DGE results, and all the rds objects that were produced by "./runDTU.sh".  
+
+```{r load, echo=F}
+
+# Set output directories
+plotOutDir <- "./results/"
+tableOutDir  <- "./results/"
+
+# meta data file and qPCR result file
+metaDataFile <- "./metaData/phenoData.csv"
+znfLabFile <- "./results/external/qPCR/ZNF_lab_values.csv"
+
+# Load differential gene expression results from:
+# RNASeq paper:
+# https://actaneurocomms.biomedcentral.com/articles/10.1186/s40478-020-00932-7
+# result object after cell type correction
+dge_obj <- readRDS("./results/external/dge_results/DESeqOut_CT.Rds")
+names(dge_obj) <-c("discovery","replication") 
+# check covariate name of condition
+DESeq2::resultsNames(dge_obj$discovery)
+# extract result dataframe
+dge_results <-list("discovery"=as.data.frame(DESeq2::results(dge_obj$discovery,independentFiltering=T,name="Profile_PD_vs_Cont")) %>%
+ dplyr::mutate(gene_id = rownames(.)), "replication" = as.data.frame(DESeq2::results(dge_obj$replication,independentFiltering=T,name="Profile_PD_vs_Cont")) %>% 
+ dplyr::mutate(gene_id=rownames(.))) 
+
+# after unpacking result objects in ./results/rds/
+# load:
+# a list with one dataframe for each cohorts. Each dataframe holds the results of stageR
+stageRList<- readRDS("./results/rds/objs_byCohort.rds")
+# a list with one dataframe for each cohort. The dataframes contain the DTU events which we identified by both tools
+toolIntersection<-  readRDS("./results/rds/drim_dex_toolInt.rds")
+# a list of dataframes, holding all DEXSeq result data. One for each cohort
+DEXSeqResultDf<- readRDS("./results/rds/dexRes.rds")
+# a list of dataframes, holding all DRIMSeq result data. One for each cohort
+DRIMSeqResultDf<- readRDS("./results/rds/drimRes.rds")
+# a nested list: outer one is a list of tools the inner lists the cohors. 
+# i.e. a list of data objects for each tool and each cohort
+DRIMSeqDEXSeqObjs<- readRDS("./results/rds/Ds.rds")
+# listing the parameters which were used to filter low expressed genes and transcripts 
+FilterParam <- readRDS("./results/rds/filtInfo.rds")
+# same nested list of data objects, but only for DRIMSeq, prior to filtering.
+# As filtering is done with DRIMSeq and then the filtered data passed to DEXSeq.
+DRIMSeqDEXSeqObjsPriorFilter<- readRDS("./results/rds/Ds_unfilt.rds")
+```
+
+## Result object and dataframe  
+
+Generating one main dataframe for use of downstream analysis. 
+* Using data from the stageR result list, which has all transcripts and genes that are significant after stageR OFWER correction, 
+  i.e. 2 stage testing first the genes and then the transcripts. StageR was applied with alpha==0.05.    
+* Using the result data frame of both DRIMSeq and DEXSeq which holds the p-values and adjusted p-values,
+  as reported by the respective tool as well as the effect size (i.e. the coefficient of the condition variable).
+* Using the main data object of both tools, which holds the original counts and or proportions.
+
+```{r createMainDf}
+#Those two dataframes are the only ones required by the following chunks. (and ofc the ones loaded above)
+df_disc <- DTU::stage_res_plus_info(genelists = stageRList, ds = DRIMSeqDEXSeqObjs, cohort = "discovery") 
+df_repl <- DTU::stage_res_plus_info(genelists = stageRList, ds = DRIMSeqDEXSeqObjs, cohort = "replication")
+info <- DTU::create_sample_info(pheno = metaDataFile, cohort_names = c("discovery","replication"), conditions=c("Control","Case")) 
+obj <- list(dge = dge_obj, dge_results = dge_results, main_df = list("discovery" = df_disc, "replication" = df_repl),
+	    Ds = DRIMSeqDEXSeqObjs, res_drim = DRIMSeqResultDf, res_dex = DEXSeqResultDf, stageRList = stageRList, info = info)
+
+# discovery cohort: define df with significant (after correction) (DTU events) 
+final_disc_dex <- df_disc$dex %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>%
+	dplyr::select(tx_id, gene_name, gene_id, l2fc, tx_pvalueStageR, nom_pval, tx_biotype) %>%
+	dplyr::arrange(abs(l2fc))
+final_disc_drim <- df_disc$drim %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>%
+	dplyr::select(tx_id, gene_id, gene_name, l2fc, tx_pvalueStageR, nom_pval, tx_biotype) %>%
+	dplyr::arrange(abs(l2fc))
+final_disc_dexdrim <- dplyr::bind_rows("DRIMSeq"= final_disc_drim, "DEXSeq"=final_disc_dex,.id="Tool")
+
+# replication cohort: define df with significant (after correction) (DTU events) 
+final_repl_dex <- df_repl$dex %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>%
+	dplyr::select(tx_id, gene_name, gene_id, l2fc, tx_pvalueStageR, nom_pval, tx_biotype) %>%
+	dplyr::arrange(abs(l2fc))
+final_repl_drim <- df_repl$drim %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>%
+	dplyr::select(tx_id, gene_id, gene_name, l2fc, tx_pvalueStageR, nom_pval, tx_biotype) %>%
+	dplyr::arrange(abs(l2fc))
+final_repl_dexdrim <- dplyr::bind_rows("DRIMSeq" = final_repl_drim, "DEXSeq" = final_repl_dex, .id = "Tool")
+```
+
+## Analysis  
+
+### Filtering (Fig.3)  
+
+Both workflows, DRIMSeq and DEXSeq use a collection of transcripts that is created with and filtered by DRIMSeq.  
+DRIMSeq's filter function is applied to the scaled transcript counts that result from tximport (scaledTPM).   
+
+This is an extract of the filter function description by DRIMSeq:    
+ 
+" Filtering parameters should be adjusted according to the sample size of the experiment data and the
+number of replicates per condition.  
+* **min_samps_gene_expr** defines the minimal number of samples where genes are required to be expressed
+at the minimal level of **min_gene_expr** in order to be included in the downstream analysis.  
+Ideally, we would like that genes were expressed at some minimal level in all samples because this
+would lead to better estimates of feature ratios. (We defined this parameter to be equal to the number of samples).  
+* Similarly, **min_samps_feature_expr** and **min_samps_feature_prop** defines the minimal number
+of samples where features are required to be expressed at the minimal levels of counts **min_feature_expr**
+or **proportions min_feature_prop**.  
+* In differential transcript/exon usage analysis, we suggest using
+**min_samps_feature_expr** and **min_samps_feature_prop** equal to the minimal number of replicates
+in any of the conditions. (defined as **n.small** in our case, representing the number of samples of the smaller group (condition).  
+* For example, in an assay with 3 versus 5 replicates, we would set  
+these parameters to 3, which allows a situation where a feature is expressed in one condition but  
+may not be expressed at all in another one, which is an example of differential transcript/exon usage "
+
+```{r filterParams}
+print("Filter parameters discovery cohort:")
+print(FilterParam$filtInfo_drim$discovery)
+print("Filter parameters replication cohort:")
+print(FilterParam$filtInfo_drim$replication)
+```
+
+Here I generate two dataframes from the tool data objects to extract counts (after scaling with scaledTPM).
+We use the counts in CPM to calculate rowwise means and medians to see differences of expression distribution before and after filtering.   
+
+```{r Figure3}
+# calculated CPMs from counts for comparison of expression. CPMs were calculated with a librarysize per sample based on all transcripts, i.e. before filtering
+gene_info <- DTU::get_gene_info(DRIMSeq::counts(DRIMSeqDEXSeqObjsPriorFilter$Ds_drim$discovery)$feature_id, tx = TRUE) %>%
+	dplyr::select(tx_biotype, tx_id)
+# discovery cohort 
+CPMs <- DRIMSeq::counts(DRIMSeqDEXSeqObjsPriorFilter$Ds_drim_unfilt$discovery) %>%
+	dplyr::rename(tx_id = feature_id) %>% 
+	dplyr::mutate_at(grep("\\.", colnames(.)), ~. / sum(.) * 1000000)
+
+CPMs_filtered <- CPMs %>% dplyr::filter(tx_id %in% DRIMSeq::counts(DRIMSeqDEXSeqObjs$Ds_drim$discovery)$feature_id)
+
+after <- left_join(CPMs_filtered, gene_info, by = "tx_id") %>%
+	mutate(rowMeans = rowMeans(.[grep("\\.", names(.))])) %>% 
+	group_by(gene_id) %>% mutate(ntx = n()) %>% 
+	dplyr::select(gene_id, tx_id, tx_biotype, rowMeans, ntx) 
+
+before <- left_join(CPMs, gene_info, by = "tx_id") %>%
+	mutate(rowMeans = rowMeans(.[grep("\\.", names(.))])) %>% 
+	group_by(gene_id) %>% mutate(ntx = n()) %>% 
+	dplyr::select(gene_id, tx_id, tx_biotype, rowMeans, ntx)
+
+df <- gdata::combine(before, after) %>% dplyr::rename(Filter=source)
+biotypeCount <- df %>% dplyr::group_by(Filter) %>%
+	dplyr::count(tx_biotype) %>%
+	mutate(sum=sum(n),frac = n / sum(n)) 
+ntxInfo  <- df %>% dplyr::group_by(Filter) %>%
+	dplyr::distinct(gene_id,.keep_all = T) 	
+
+p1 <- ggplot(df, aes(x = log10(rowMeans), col = Filter)) +
+	geom_histogram(aes(y = ..density.., fill = Filter), alpha = 0.4, bins = 100) +
+	geom_density(size = 1.1) +
+	scale_x_continuous(name = "log10(mean CPM)", limits = c(-8,10)) +
+	theme_bw() +
+	scale_color_manual(values = c("deepskyblue3", "darkblue"))+
+	scale_fill_manual(values = c("deepskyblue3", "darkblue"))+	
+	labs(title = "a")
+p2 <- ggplot(ntxInfo, aes(x = Filter, y = log10(ntx))) +
+	geom_violin(scale = "count", aes(fill = Filter)) +
+	geom_jitter(width = 0.1, size = 0.3, alpha = 0.01) +
+	theme_bw() +
+	scale_y_continuous(name = "log10(# transcripts per gene)") + 
+	labs(x = "", title = "b") +
+        scale_color_manual(values = c("deepskyblue3", "darkblue"))+
+	scale_fill_manual(values = c("deepskyblue3", "darkblue"))	
+p3 <- ggplot(subset(biotypeCount, frac >= 0.001), aes(x = as.factor(tx_biotype), y = frac, fill = Filter)) +
+	geom_bar( stat = "identity") +
+	coord_flip() +
+	facet_wrap(.~Filter) +
+	theme_bw() +
+	theme(axis.text.x = element_text(angle = -90)) +
+	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency", title = "c") +
+        scale_color_manual(values = c("deepskyblue3", "darkblue"))+
+	scale_fill_manual(values = c("deepskyblue3", "darkblue"))+	
+theme(panel.spacing = unit(1, "lines")) +
+theme(strip.background = element_rect(fill = "black"))+
+theme(strip.text = element_text(color = "white", face = "bold")) 
+
+
+grid.arrange(p1, p2, p3)
+svg(paste0(plotOutDir, "Figure3.svg"), width = 7, height = 9)
+grid.arrange(p1, p2, p3)
+dev.off()
+```
+
+## Diagnostic plots (Fig.S1)  
+
+Volcano and MA plots  
+
+```{r S1}
+# generate dataframe with expression counts for plotting 
+# DRIMSeq
+exprMixed_drim <-  DRIMSeq::counts(DRIMSeqDEXSeqObjs$Ds_drim$discovery) %>%
+	dplyr::mutate(meanExpr = rowMeans(as.matrix(.[grep('\\.', names(.))]))) %>%
+	dplyr::select(feature_id, meanExpr) %>% dplyr::rename(tx_id = feature_id)
+# join the general discovery DRIMSeq dataframe that we generated at the start, 
+# with the expression dataframe to have all data in one (pvalues and expression)
+df_drimTxLevel <- left_join(df_disc$drim, exprMixed_drim, by = "tx_id") %>%
+	dplyr::rename(rankOtherTool = rankDex) 
+# get the gene-level p-values for DRIMSeq 
+geneLevel_drim <- as.data.frame(DRIMSeq::results(DRIMSeqDEXSeqObjs$Ds_drim$discovery)) %>%
+	dplyr::select(gene_id, pvalue) %>% dplyr::rename(qvalue = pvalue)
+# group dataframe by gene_id and calculate how many transcripts each gene has,
+# then only keep one (randomly chosen) transcript per gene, so we keep only the gene information 
+df_drim <- df_drimTxLevel %>% dplyr::group_by(gene_id) %>%
+	dplyr::mutate(ntx=n()) %>% dplyr::distinct(gene_id, .keep_all = TRUE)
+# and join with the dataframe above
+df_drim <- left_join(df_drim, geneLevel_drim, by = "gene_id") 
+# DEXSeq
+# extract count data from DEXSeq using their accesor function and modify the tx_id column (original column is a concat of featureID and groupID)
+tx_id <- as.data.frame(stringr::str_split(rownames(DEXSeq::featureCounts(DRIMSeqDEXSeqObjs$Ds_dex$discovery)), ":", simplify = TRUE))[, 2] 
+exprMixed_dex <-  as.data.frame(DEXSeq::featureCounts(DRIMSeqDEXSeqObjs$Ds_dex$discovery)) %>%
+	dplyr::mutate(meanExpr = rowMeans(.)) %>%
+	dplyr::select(meanExpr)  
+exprMixed_dex$tx_id <- tx_id
+# join the expression data with the general dataset we generated at the start
+df_dexTxLevel <- left_join(df_disc$dex, exprMixed_dex, by="tx_id") %>%
+	dplyr::rename(rankOtherTool= rankDrim)
+#get the gene-level results 
+geneLevel_dex <- DEXSeq::perGeneQValue(DEXSeq::DEXSeqResults(DRIMSeqDEXSeqObjs$Ds_dex$discovery, independentFiltering = FALSE))
+geneLevel_dex <- data.frame(gene_id = names(geneLevel_dex), qvalue = geneLevel_dex)
+#count number of transcripts per gene
+df_dex <- df_dexTxLevel %>% dplyr::group_by(gene_id) %>% dplyr::mutate(ntx = n()) 
+#keep only one (randomly chosen) transcript per gene, as we only need gene info for further plotting 
+df_dex <- df_dex %>% dplyr::distinct(gene_id,.keep_all = TRUE)
+#joing gene-level result with df above
+df_dex <- dplyr::left_join(df_dex, geneLevel_dex, by = "gene_id") 
+
+#bind rows of both dataframes together
+dfGeneLevel <- gdata::combine(df_drim, df_dex, names = c("DRIMSeq","DEXSeq")) %>%
+	dplyr::rename(tool = source)
+dfTxLevel <- gdata::combine(df_drimTxLevel, df_dexTxLevel, names = c("DRIMSeq","DEXSeq")) %>%
+	dplyr::rename(tool = source)
+
+
+
+plotVolcano <- function(df,alpha=0.05,title=""){
+
+df$sig<-sapply(seq(1,nrow(df)),function(i)(ifelse(df[i,"nom_pval"]<0.05,"TRUE","FALSE")))
+# the following lines mark the extreme DEXSeq p-value outliers such that they can be seen in the plot
+df %<>% dplyr::mutate(outlier=ifelse(-log10(nom_pval)>10,TRUE,FALSE),nom_pval=ifelse(-log10(nom_pval)>10,10^-11,nom_pval))
+
+ggplot(df) +
+	geom_point(aes(x=l2fc,y=-log10(nom_pval),col=as.factor(sig),shape=outlier),alpha=0.3,show.legend=F) +
+	geom_hline(yintercept=0)  +
+	scale_color_manual(labels=c("TRUE"="p-value < 0.05","FALSE" = "not signif."),values=c("TRUE"="red","FALSE"="grey")) +
+	labs(y="-log10(p-value)",x="effect size",col="Significance",tag=title) +
+	facet_wrap(~tool)+#,scales="free_y") +
+	#coord_fixed() +
+	geom_vline(xintercept=-0.1,col="grey39") +
+	geom_vline(xintercept=.1,col="grey39") +
+	geom_hline(yintercept=-log10(alpha),col="darkblue",lty="dotted") +
+		theme_bw() +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme(strip.background=element_rect(fill="black")) + 
+theme(strip.text= element_text(color="white",face="bold")) 	
+
+}
+
+
+my_plotMA <- function(df,alpha=0.05,title=""){
+
+df$sig<-sapply(seq(1,nrow(df)),function(i)(ifelse(df[i,"nom_pval"]<0.05,"TRUE","FALSE")))
+df %<>% dplyr::mutate(outlier=ifelse(abs(l2fc)>3,TRUE,FALSE),l2fc=ifelse(abs(l2fc)>3,3.2,l2fc))
+ggplot(df, aes(x=log10(meanExpr),y=l2fc,col=as.factor(sig))) +
+	geom_point(alpha=0.3,aes(shape=outlier)) +
+	facet_wrap(~tool) + 
+	scale_color_manual(labels=c("TRUE"="p-value < 0.05","FALSE" = "not signif."),values=c("TRUE"="red","FALSE"="grey")) +
+	labs(x="log10(mean expression)",y="Effect size",col="Significance",tag=title) +
+		theme_bw() +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme(strip.background=element_rect(fill="black")) +
+theme(strip.text= element_text(color="white",face="bold"))  +
+theme(legend.position="bottom",plot.tag = element_text(margin = margin(t=0))) +
+theme(plot.margin=unit(c(0,0,0,0),"mm"))
+	
+}
+
+plot_pvalDist<-function(df,tag) {
+df %>% dplyr::mutate(ntxLabel=paste0(ntx," transcripts/gene")) %>%
+ggplot(.,aes(x=qvalue,y=..density..)) +
+geom_histogram(aes(fill=tool),col="black") +
+geom_density() +
+facet_grid(rows=vars(ntxLabel),cols=vars(tool),scales="free") +
+scale_fill_manual(values=c("DEXSeq"=colorFriendly[["blue"]],"DRIMSeq"=colorFriendly[["orange"]]))+
+theme_bw() +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme(strip.background=element_rect(fill="black")) +
+theme(strip.text= element_text(color="white",face="bold")) 	+
+labs(tag=tag,fill="Tool",x="gene-level p-value",y="density") 
+}
+
+p1 <- plotVolcano(dfTxLevel,title="a")
+p2 <- my_plotMA(dfTxLevel,title="b")	
+p3 <- plot_pvalDist(dfGeneLevel,tag="c")
+
+(p1/p2 + plot_layout(heights=c(1,2))) | p3 
+svg(paste0(plotOutDir,"S1.svg"),width=13,height=10)
+(p1/p2 + plot_layout(heights=c(1,2))) | p3 
+dev.off()
+```
+
+### Tool agreement (Fig.4)
+
+Comparing effect size of DRIMSeq and DEXseq.  
+Effect size refers to the coefficient of the model of the respective tool,
+which was assigned to the variable "condition", i.e. CT vs PD.  
+For the effect size of DRIMSeq we applied a transformation: log2(exp(effectSize)).
+
+```{r makeDfToolAgreement, echo=F}
+make_df <- function(drim,dex) {
+ # define the transcripts that are in both tool dataframes
+ # (they should be the same but just to make sure)
+ ids <- Reduce(intersect,list(drim$tx_id, dex$tx_id))
+ # join ids, and both tool dataframes together (concat columns)
+ df <- dplyr::left_join(dplyr::left_join(data.frame(tx_id = ids), drim, by = "tx_id"), dex, by = "tx_id", suffix = c(".drim",".dex"))
+ 
+ # perc of nom sig of the ones that were sig after correction in the other tool and vice verca
+ df %>% dplyr::filter(!(is.na(tx_pvalueStageR.drim))) %>% dplyr::summarise(drimAdj=nrow(.),nomSigDex=sum(nom_pval.dex<0.05),perc=(nomSigDex/drimAdj)*100)
+ df %>% dplyr::filter(!(is.na(tx_pvalueStageR.dex))) %>% dplyr::summarise(dexAdj=nrow(.),nomSigDrim=sum(nom_pval.drim<0.05),perc=(nomSigDrim/dexAdj)*100)
+ 
+ # helper columns for plotting
+ df$sig <- sapply(seq(1,nrow(df)),function(i)(
+ 	if(df[i,"nom_pval.dex"]<0.05 && df[i,"nom_pval.drim"]<0.05) 
+ 		{ flag="Significant according to \n DEXSeq and DRIMSeq"} else if (df[i,"nom_pval.dex"]<0.05 && df[i,"nom_pval.drim"]>=0.05) 
+ 		{ flag="Significant according to DEXSeq \n not significant in DRIMSeq"} else if(df[i,"nom_pval.dex"]>=0.05 && df[i,"nom_pval.drim"]<0.05) 
+ 		{ flag="Significant according to DRIMSeq \n not significant in DEXSeq"} else
+ 	{ flag="Not significant"}
+ 	))
+ df$helpTag <- sapply(seq(1,nrow(df)),function(i)(
+ 		ifelse(df[i,"sig"]=="Not significant",0,1))) 
+ #is tx significant after stageR correction and if so by which tool 
+ df$fdr  <-  sapply(seq(1,nrow(df)),function(i)(
+ 	if(!(is.na(df[i,"tx_pvalueStageR.dex"])) && !(is.na(df[i,"tx_pvalueStageR.drim"]))) 
+ 		{ flag="Both tool p-values \nsurvived stageR correction"} else if (!(is.na(df[i,"tx_pvalueStageR.dex"])) && is.na(df[i,"tx_pvalueStageR.drim"])) 
+ 		{ flag="DEXSeq p-value \nsurvived stageR correction"} else if(is.na(df[i,"tx_pvalueStageR.dex"]) && !(is.na(df[i,"tx_pvalueStageR.drim"]))) 
+ 		{ flag="DRIMSeq p-value \nsurvived stageR correction"} else
+ 	{ flag="Neither p-value \nsurvived stageR correction"}
+ 	))
+ 
+ dfList<-split(df,df$sig)
+ return(dfList)
+}
+
+makeplot <- function(df,tag,legend) {
+	ggplot(data=df,aes(x=l2fc.drim,y=l2fc.dex)) +
+	geom_point(aes(col=fdr,alpha=fdr),size=1.5) +
+	scale_alpha_manual( values=c("Neither p-value \nsurvived stageR correction"=0.1,"Both tool p-values \nsurvived stageR correction"=1,"DEXSeq p-value \nsurvived stageR correction"=1,"DRIMSeq p-value \nsurvived stageR correction"=1))+
+scale_color_manual(values=c("Neither p-value \nsurvived stageR correction"="grey39","Both tool p-values \nsurvived stageR correction"="red","DEXSeq p-value \nsurvived stageR correction"=colorFriendly[["blue"]],"DRIMSeq p-value \nsurvived stageR correction"=colorFriendly[["orange"]]))+
+  	facet_wrap(. ~ sig) + scale_fill_viridis_c() +
+	geom_abline(intercept = 0, slope = 1,lty="dashed",) +
+	 labs(tag=tag,title="",x="Effect size DRIMSeq",y="Effect size DEXSeq",fill="Density level",col="") +
+	 geom_hline(aes(yintercept=0),alpha=0.5) +
+	 geom_vline(aes(xintercept=0),alpha=0.5) +
+		theme_bw() +
+		stat_cor() +
+		coord_fixed() +
+	theme(plot.title = element_text(hjust = 0.5)) +
+	theme(panel.spacing = unit(1, "lines")) +
+	theme(strip.background=element_rect(fill="black"))+
+	theme(strip.text= element_text(color="white",face="bold")) +
+ 	guides(alpha = FALSE, size = FALSE) +
+	theme(legend.position = legend) +
+	scale_x_continuous(limits=c(-max(c(abs(df$l2fc.drim),abs(df$l2fc.dex))),max(c(abs(df$l2fc.drim),abs(df$l2fc.dex))))) +
+	scale_y_continuous(limits=c(-max(c(abs(df$l2fc.drim),abs(df$l2fc.dex))),max(c(abs(df$l2fc.drim),abs(df$l2fc.dex))))) 	
+}
+
+```
+
+```{r Figure4}
+# dfs that contain all info 
+drim <- obj$main_df$discovery$drim 
+dex <- obj$main_df$discovery$dex
+dfList <- make_df(drim,dex)
+p1 <- makeplot(dfList[[1]], tag = "a", legend = "none")
+p2 <- makeplot(dfList[[2]], tag = "b", legend = "bottom")
+p3 <- makeplot(dfList[[3]], tag = "c", legend = "none")
+p4 <- makeplot(dfList[[4]], tag = "d", legend = "none")
+combined <- (p1 | p2) / (p3 | p4) #& theme(legend.position = "bottom")
+combined
+svg(paste0(plotOutDir,"Figure4.svg"),width=10,height=10)
+combined / guide_area() + plot_layout(guides = "collect",widths=c(3,1))
+dev.off() 
+```
+
+For the replication cohort(Fig. S2):  
+
+```{r FigureS2}
+#prepare the dfs that contain all info 
+drim <- obj$main_df$replication$drim 
+dex <- obj$main_df$replication$dex
+dfList <- make_df(drim,dex)
+p1 <- makeplot(dfList[[1]], tag = "a", legend = "none")
+p2 <- makeplot(dfList[[2]], tag = "b", legend = "bottom")
+p3 <- makeplot(dfList[[3]], tag = "c", legend = "none")
+p4 <- makeplot(dfList[[4]],tag = "d", legend = "none")
+combined <- (p1 | p2) / (p3 | p4)
+combined
+svg(paste0(plotOutDir,"S2.svg"), width = 10, height = 10)
+combined / guide_area() + plot_layout(guides = "collect", widths = c(3,1))
+dev.off() 
+```
+
+### Replication cohort 
+
+```{r}
+print("Number of transcripts in both cohorts")
+print(length(Reduce(intersect,list(df_repl$drim$tx_id,df_disc$drim$tx_id))) )
+```
+
+Agreement on effect size across cohorts (Fig.6)
+
+```{r Figure6}
+#plot correlation
+cor <- T
+# create replication cohort df's which contain all transcripts that are in the final discovery cohort list created at the beginning
+final_repl_dex <- df_repl$dex %>% dplyr::filter(tx_id %in% final_disc_dex$tx_id) %>% dplyr::select(tx_id,gene_id,l2fc,nom_pval)
+final_repl_drim <- df_repl$drim %>% dplyr::filter(tx_id %in% final_disc_drim$tx_id) %>% dplyr::select(tx_id ,gene_id,l2fc,nom_pval)
+
+# join cohort dataframes for each tool
+# DEXSeq
+dfDex <- na.omit(left_join(final_disc_dex,final_repl_dex, by = "tx_id", suffix = c("_disc","_repl")))
+# helper coloumn for plottig, whether or not transcript is nominally significant in repl. cohort according to DEXSeq
+dfDex$sigRepl <-  sapply(dfDex$nom_pval_repl, function(i)(ifelse(i < 0.05, 1, 0)))
+dfDex$label <- sapply(dfDex$gene_name, function(g)(ifelse(g %in% c("ZNF189"), as.character(g), "")))
+
+# Do the same for DRIMSeq
+dfDrim <- na.omit(left_join(final_disc_drim, final_repl_drim, by = "tx_id", suffix = c("_disc","_repl")))
+dfDrim$sigRepl <-  sapply(dfDrim$nom_pval_repl, function(i)(ifelse(i < 0.05, 1, 0)))
+dfDrim$label <- sapply(dfDrim$gene_name, function(g)(ifelse(g %in% "ZNF189", as.character(g), "")))
+
+#only one transcript of the lab genes is significant after stageR,
+#thats why we see only one point for each of the two genes in the plot
+
+agreementPlot <- function(df,tag="",legend="none") {
+
+ggplot(data=df,aes(x=l2fc_repl,y=l2fc_disc)) +
+geom_point(aes(col=as.factor(sigRepl)),alpha=.3) +
+stat_density2d(col="black",size=0.3) +
+geom_abline(intercept = 0, slope = 1,lty="dashed",) +	
+labs(title="",tag=tag,x="effect size replication cohort",y="effect size discovery cohort",col="Nominal p-value (replication cohort)") +
+	scale_color_manual(values=c("1"="red","0"="black"),labels=c("1"="<0.05","0"=">0.05")) +
+	facet_wrap(~Tool) + #,scales="free") +
+scale_fill_manual(values=c("1"="red","0"="grey")) +	
+	geom_hline(aes(yintercept=0),col="grey") +
+	 geom_vline(aes(xintercept=0),col="grey") +
+	 scale_x_continuous(limits=c(-max(c(abs(df$l2fc_repl),abs(df$l2fc_disc))),max(c(abs(df$l2fc_repl),abs(df$l2fc_disc))))) +
+	 scale_y_continuous(limits=c(-max(c(abs(df$l2fc_repl),abs(df$l2fc_disc))),max(c(abs(df$l2fc_repl),abs(df$l2fc_disc)))) )+
+	 coord_fixed() +
+#	 geom_label_repel(aes(label=label)) +
+		theme_bw() +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme(panel.spacing = unit(1, "lines")) +
+theme(strip.background=element_rect(fill="black"))+
+theme(strip.text= element_text(color="white",face="bold")) +
+ guides(fill = FALSE, size = FALSE) +
+theme(legend.position = legend)
+}
+
+df <- dfDex %>% dplyr::bind_rows("DEXSeq" = ., "DRIMSeq" = dfDrim, .id = "Tool")          
+nrow(dfDrim)
+cor(dfDrim$l2fc_repl, dfDrim$l2fc_disc)
+cor.test(sign(dfDrim$l2fc_repl), sign(dfDrim$l2fc_disc))
+
+p <- agreementPlot(df,tag="b",legend="right")
+
+print("percent agreement dex")
+print(formatC(100*(nrow(subset(dfDex, sign(l2fc_disc) == sign(l2fc_repl))) / nrow(dfDex))))
+print("percent agreement drim")
+print(formatC(100*(nrow(subset(dfDrim, sign(l2fc_disc) == sign(l2fc_repl))) / nrow(dfDrim))))
+
+#Basically this is the same as above just that this time we do use all transcripts of PV not only the ones which survived stageR correction
+#This is only done for DRIMSeq this time
+# define ids which are in both cohorts
+
+ids <- Reduce(intersect,list(df_repl$drim$tx_id,df_disc$drim$tx_id))
+# merge ids with NBB df
+df <- left_join(data.frame(tx_id = ids), df_repl$drim, by = "tx_id", suffix = c("","replication"))
+# add PV df
+df <- left_join(df, df_disc$drim, by = "tx_id", suffix = c("_repl","_disc"))
+
+#helper columns for plotting. 
+#disc repl +(disc sig)(repl sig)(&&)  (||)
+#   1  -1  0	1	1 	1  	1	
+#  -1   2  1	0	0	0	0	
+#   1   2  3	1	0	0	1	
+#  -1  -1  2 	0	1	0	1
+
+#TODO: replace with dplyr instead of using sapply
+df$sigDisc <- sapply(df$nom_pval_disc, function(i)(ifelse(i < 0.05, 1, -1)))
+df$sigRepl <-  sapply(df$nom_pval_repl,function(i)(ifelse(i < 0.05, -1, 2)))
+df$sigCol <- as.factor(sapply(seq(1, nrow(df)), function(i)(df[i, "sigDisc"] + df[i, "sigRepl"])))
+# for plot legend
+df$sigColLabel <- plyr::revalue(df$sigCol, c("0" = "Sig. in both cohorts", "1" = "Not sig. in either cohort", "3" = "Sig. in the discovery cohort only", "-2" = "Sig. in the replication cohort only"))
+
+#replace stageR assigned NA value with 1s 
+df$tx_pvalueStageR_repl <- sapply(df$tx_pvalueStageR_repl, function(i)(ifelse(is.na(i), 1, i)))
+df$tx_pvalueStageR_disc <- sapply(df$tx_pvalueStageR_disc, function(i)(ifelse(is.na(i), 1, i)))
+#helper col tags transcripts which have the same sign of l2fc (or effect size)
+df$agreelfc <- as.factor(sapply(seq(1,nrow(df)),function(i) {
+	ifelse(sign(df[i, "l2fc_repl"]) == sign(df[i,"l2fc_disc"]),1,0)
+	}))
+print("percentage of tx agreeing on direction disc. cohort not repl. cohort")
+print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in the discovery cohort only"))/nrow(subset(df,sigColLabel=="Sig. in the discovery cohort only")))))
+print("percentage of tx agreeing on direction disc. cohort and repl. cohort")
+print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in both cohorts"))/nrow(subset(df,sigColLabel=="Sig. in both cohorts")))))
+print("percentage of tx agreeing on direction repl. cohort not disc. cohort")
+print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in the replication cohort only"))/nrow(subset(df,sigColLabel=="Sig. in the replication cohort only")))))
+
+#effect size agreement plot
+esa_plot <- ggplot(data=df,aes(x=l2fc_repl,y=l2fc_disc)) +   
+geom_point(aes(col=as.numeric(tx_pvalueStageR_disc)),alpha=0.5) +
+stat_density2d(col="black",size=0.2)+
+facet_wrap(~sigColLabel) + scale_fill_viridis_c() +
+coord_fixed() +
+scale_color_gradient(low="red",high="grey") +
+geom_abline(intercept = 0, slope = 1,lty="dashed",) +	
+labs(title="",x="effect size replication cohort",y="effect size discovery cohort",fill="",col="Adj. p-value (discovery cohort)",tag="a") +
+ geom_hline(aes(yintercept=0),col="grey") +
+geom_vline(aes(xintercept=0),col="grey") +
+theme_bw() +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme(panel.spacing = unit(1, "lines")) +
+theme(strip.background=element_rect(fill="black"))+
+theme(strip.text= element_text(color="white",face="bold")) +
+guides(alpha = FALSE, size = FALSE) +
+theme(legend.position="right")
+
+if (cor == TRUE){
+esa_plot <- esa_plot + 
+	stat_cor()
+p <- p +
+	stat_cor()
+}
+
+svg(paste0(plotOutDir,"Figure6.svg"),width=12,height=12)
+esa_plot / p + plot_layout(widths=c(1.5,1))
+dev.off()
+```
+
+Agreement on direction of effect size
+(run previous chunk to create df used here)
+
+```{r, dependson="Figure6"}
+#df %<>% dplyr::filter(!(is.na(gene_id_repl)))
+# not sig in either cohort
+nonSig <- subset(df, sigCol == 1)
+nrow(nonSig)
+table(nonSig$agreelfc)[2]/nrow(nonSig)
+nrow(df)
+cor(sign(nonSig$l2fc_disc),sign(nonSig$l2fc_repl))
+cor.test(sign(nonSig$l2fc_disc),sign(nonSig$l2fc_repl))
+
+mat <- rbind(c(sum(sign(nonSig$l2fc_repl)==1),sum(sign(nonSig$l2fc_repl)!=1)),
+	    c( sum(sign(nonSig$l2fc_disc)==1),sum(sign(nonSig$l2fc_disc)!=1)))
+
+
+#sig in PW
+sigPV<- subset(df,sigCol==3)
+nrow(sigPV)
+cor.test(sign(sigPV$l2fc_disc),sign(sigPV$l2fc_repl))
+cor(sigPV$l2fc_disc,sigPV$l2fc_repl)
+t.test(as.numeric(sigPV$agreelfc)-1,as.numeric(nonSig$agreelfc)-1)
+
+#sig in both
+sig<- subset(df,sigCol==0)
+nrow(sig)
+cor(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
+cor.test(sig$l2fc_disc,sig$l2fc_repl)
+t.test(as.numeric(sigPV$agreelfc)-1,as.numeric(nonSig$agreelfc)-1)
+
+#sig in NBB
+sigNBB<- subset(df,sigCol==-2)
+nrow(sigNBB)
+cor.test(sign(sigNBB$l2fc_disc),sign(sigNBB$l2fc_repl))
+cor(sigPV$l2fc_disc,sigPV$l2fc_repl)
+t.test(as.numeric(sigPV$agreelfc)-1,as.numeric(nonSig$agreelfc)-1)
+```
+
+### Numbers for paper result section
+
+Number of genes with a significant pvalue after stageR  
+
+```{r GeneNo}
+print("DEXSeq")
+length(unique(final_disc_dex$gene_id))
+print("DRIMSeq")
+length(unique(final_disc_drim$gene_id))
+print("all genes")
+print(length(unique(c(final_disc_drim$gene_id,final_disc_dex$gene_id))))
+print(length(unique(c(final_disc_drim$tx_id,final_disc_dex$tx_id))))
+print("tool int")
+print(length(Reduce(intersect,list(unique(final_disc_dex$gene_id),unique(final_disc_drim$gene_id)))))
+```
+
+How many transcrips of which transcript biotype were significant  
+
+```{r txDist}
+print("DRIMSeq")
+print(table(final_disc_drim$tx_biotype))
+print("DEXSeq")
+print(table(final_disc_dex$tx_biotype))
+```
+
+How many transcrips per gene 
+
+```{r noTxGene}
+print("DRIMSeq")
+print(table(table(final_disc_drim$gene_id)))
+print("DEXSeq")
+print(table(table(final_disc_dex$gene_id)))
+```
+
+Number of missing genes in NBB due to low expression  
+
+```{r NBBNumbers}
+
+print("DEXSeq")
+dexN <- nrow(left_join(final_disc_dex,df_repl$dex[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T))
+NmissingDexRepls <- colSums(is.na(left_join(final_disc_dex,df_repl$dex[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T)))
+print(NmissingDexRepl["l2fc.y"])
+print(dexN-NmissingDexRepl)
+
+print("DRIMSeq")
+drimN <- nrow(left_join(final_disc_drim,df_repl$drim[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T))
+NmissingDrimRepl <- colSums(is.na(left_join(final_disc_drim,df_repl$drim[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T)))
+print(NmissingDrimRepl["l2fc.y"])
+print(drimN-NmissingDrimRepl)
+```
+Format function for latex:  
+
+```{r}
+myFormat <- function(val){
+nVal=as.character(round(val,digits=2))
+for(i in 1:length(nVal)){
+		if(sign(val[i])==1 | sign(val[i])==0) # if is pos
+		{
+			nVal[i]=paste0("\\ ",nVal[i])
+		}
+		if(nVal[i] == "\\ 0")
+		{
+			nVal[i] <- "\\ 0.00"
+		}
+	}
+	   	return(nVal)
+}
+```
+
+Latex tables
+
+```{r Table 3_and_4}
+#DEXSeq
+#exclue all transcripts which are not present in NBB (NA's)
+df <- na.omit(left_join(final_disc_dex,obj$main_df$replication$dex[,c("tx_id", "nom_pval", "l2fc")], by = "tx_id", suffix = c("_disc", "_repl")))
+# retain only transcripts where the sign of the l2fc or effect size in PV equals the sign in NBB
+df <- df %>% dplyr::filter(sign(l2fc_disc) == sign(l2fc_repl), nom_pval_repl < 0.05) 
+#format for latex and sort by PV transcript stageR pvalue
+df %<>% dplyr::select(gene_name, tx_id, tx_biotype, tx_pvalueStageR, l2fc_disc, l2fc_repl) %>% 
+	dplyr::arrange(tx_pvalueStageR) %>% 
+	dplyr::mutate_at(3,~gsub("_"," ",.)) %>%
+	dplyr::mutate_at(4:6,~myFormat(.)) %>% #~formatC(.,digit=3,format="E",flag=" ")) %>% 
+	dplyr::mutate_at(2:6,~paste0("&",.)) %>%
+	dplyr::mutate_at(6,~paste0(.,"\\\\")) %>%
+	dplyr::select(-(tx_pvalueStageR)) %>%
+	tibble::add_column(.,tool=rep("&DEXSeq&",nrow(.)),.before=1)
+write.table(df,file=paste0(tableOutDir,"dexFinal.txt"),quote=F,col.names=F,row.names=F)
+
+#DRIMSeq
+#the same as above
+df <- na.omit(left_join(final_disc_drim,obj$main_df$replication$drim[,c("tx_id","nom_pval","l2fc")],by="tx_id",suffix=c("_disc","_replication")))
+df <- df %>% dplyr::filter(sign(l2fc_disc) == sign(l2fc_replication), nom_pval_replication < 0.05) 
+#compare to dge results of PV
+df <- dplyr::left_join(df,obj$dge_results$discovery, by = "gene_id")
+#number of DTU genes picked up by DGE:
+df %>% dplyr::filter(padj < 0.05)
+df %>% dplyr::filter(padj > 0.05) %>% dplyr::summarise(length(unique(gene_id)))
+#format for latex and sort by PV transcript stageR pvalue
+df %<>% dplyr::select(gene_name, tx_id, tx_biotype, tx_pvalueStageR, l2fc_disc, l2fc_replication) %>% 
+	dplyr::arrange(tx_pvalueStageR) %>% 
+	dplyr::mutate_at(3,~gsub("_"," ",.)) %>%
+	dplyr::mutate_at(4:6,~myFormat(.)) %>% #~formatC(.,digit=3,format="E",flag=" ")) %>% 
+	dplyr::mutate_at(2:6,~paste0("&",.)) %>%
+	dplyr::mutate_at(6,~paste0(.,"\\\\")) %>%
+	dplyr::select(-(tx_pvalueStageR)) %>%
+	tibble::add_column(.,tool=rep("&DRIMSeq&",nrow(.)),.before=1)
+write.table(df,file=paste0(tableOutDir,"drimFinal.txt"),quote=F,col.names=F,row.names=F)
+```
+
+These plots are not included in the paper but nice to have for a quick look.
+
+```{r countplots}
+
+#DRIMSeq
+#the same as above
+df_drim <- na.omit(left_join(final_disc_drim,obj$main_df$replication$drim[,c("tx_id", "nom_pval","l2fc")],by="tx_id",suffix=c("_disc","_repl"))) %>%
+	dplyr::filter(sign(l2fc_disc) == sign(l2fc_repl), nom_pval_repl < 0.05) 
+#
+#DEXSeq
+#exclue all transcripts which are not present in NBB (NA's)
+df_dex <- na.omit(left_join(final_disc_dex, obj$main_df$replication$dex[, c("tx_id", "nom_pval", "l2fc")], by = "tx_id", suffix = c("_disc","_repl"))) %>% 
+	dplyr::filter(sign(l2fc_disc) == sign(l2fc_repl), nom_pval_repl < 0.05) 
+#plot all replicated DTU genes of DRIMSeq
+lapply(unique(df_drim$gene_name),function(geneName){
+	       plot_genes_cohort(gene_name = geneName,
+				 tool = "drim",
+				 only_nom_sig = F,
+				 conditions = c("CT","PD"),
+				 out = plotOutDir,
+				 obj = obj,
+				 cohort = "discovery",
+				 selected_samples = NULL,
+				 want_jitter = F)
+	   })
+```
+
+### AS studied in PD genes
+
+SNCA,PARK2,PARK7,GBA,PINK1,SRRM2,GBA,FBXO7,LRRK2  
+
+```{r ASPD, eval=F}
+
+#Specifically, it has been reported that 4 splice variants of SNCA are increased in the frontal cortex of PD patients and that \textit{PARK2}  isoforms are differentially expressed in the same brain region
+#which are they?
+#full length transcript SNCA-140- SNCA-001/2/3/6/8 
+#SNCA004 SNCA-203 201 005 abd 202 splice variants
+#SNCA-98 vrain specific 
+# many more -->13
+#SNCA-140, SNCA-126, SNCA-112, and SNCA-98 overexpressed in PD frontal cortex 126 upregulated 
+# Some interesting data emerge on SNCA-112 variant. An association between PD risk-associated single nucleotide polymorphisms (SNPs) within the 3′ region of SNCA gene and higher SNCA-112 ratio level has been observed in about 100 of frontal cortex samples
+
+# we only see some DTU in the SNCA-006 (SNCA140) full length transcript (protein_coding) 
+# SNCA-112 see effect size of 0.39 *(drim) and 0.36 (dex) but nom pvalue of 0.07 (deX) and 0.2 (drim)
+# sig upregulated SNCA126 only: ENST00000394989( not ENST00000505199) not upregulated (0.06 es)
+
+
+#9 transcripts present prio filtering (all protein coding)
+#4 transcripts are present after filtering one transcript shows slight DTU with a nominal p-value of 0.055 and an effect size of -0.49 (drim)
+
+#park2
+#11 splicie variants also called parkin
+# we find only 7,out of which 2 remian after filtering and none show DTU 
+# study with 5 PDS showed 5 expressed transcripts with 3 sig transcirpts with altered raitos in PD post moretm brain tissue of barcelona brain bank, frontal cortex. RNA isolation and realtime PCR 
+# other study TV12 and TV3 same study other publicaiton (same authors)
+# 6 transcripts present prior filtering 
+# 2 transcripts are present after filtering. no transcript shows evidence of DTU (nom pvalues 0.795 and effect siye 0.087)
+#
+#park7
+# no transcripts of PARK7 are present after filtering
+# 10 transcripts present prior to filtering all below threshold except ENST00000338639 protein coding. (dtu only considers genes with at least two isoforms present after filtering
+
+```
+
+### DGE and DTU (Table 3)
+
+For this we use the result dataframe of the differential gene expression analysis.  
+
+```{r DGEINT}
+DGE <- subset(obj$dge_results$discovery, padj < 0.05)
+
+#for each tool, subset the df to contain only dtu events of genes which appear in the DGE df
+drimReprod <- final_disc_drim %>% dplyr::filter(gene_id %in% DGE$gene_id)
+dexReprod <- final_disc_dex %>% dplyr::filter(gene_id %in% DGE$gene_id)
+bothToolReprod <- final_disc_dexdrim %>% dplyr::filter(gene_id %in% DGE$gene_id)
+
+#compare effect size for these candidates
+df <- dplyr::left_join(bothToolReprod, DGE, by = "gene_id") %>%
+	dplyr::group_by(gene_id) %>% 
+	dplyr::select(Tool, tx_id, gene_id, gene_name, l2fc, tx_biotype, log2FoldChange) %>%
+	dplyr::ungroup()
+
+df %<>% dplyr::select(Tool, gene_name, tx_id, tx_biotype, l2fc, log2FoldChange) %>% 
+	dplyr::arrange(gene_name) %>% 
+	dplyr::mutate_at(4, ~gsub("_"," ",.)) %>%
+	dplyr::mutate_at(5:6, ~myFormat(.)) %>% 
+	dplyr::mutate_at(2:6, ~paste0("&",.)) %>%
+	dplyr::mutate_at(6, ~paste0(.,"\\\\")) 
+write.table(df,file=paste0(tableOutDir,"DGEDTU.txt"),quote=F,col.names=F,row.names=F)
+```
+
+### DGE and DTU intersection (Fig. 1) 
+
+```{r Figure1}
+DGE <- subset(obj$dge_results$discovery, padj < 0.05)
+df <- final_disc_dexdrim
+df %<>% dplyr::group_by(Tool) %>%
+	dplyr::count(tx_biotype) %>%
+	mutate(sum=sum(n),frac=100*(n/sum(n)))
+
+resultPlotBiotype <- ggplot(data = df, aes(x = tx_biotype, fill = Tool)) +
+    geom_bar(aes(y = frac), stat = "identity") +
+    scale_fill_manual(values = c("DEXSeq" = colorFriendly[["blue"]], 
+				 "DRIMSeq" = colorFriendly[["orange"]])) +
+    facet_wrap(~Tool, scales = "free") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90)) +
+	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency", tag = "b", fill = "") +
+       theme(panel.spacing = unit(1, "lines")) +
+    theme(strip.background = element_rect(fill = "black"))+
+    theme(legend.position = "none")+
+    theme(strip.text = element_text(color = "white", face = "bold")) 
+
+drim <- unique(final_disc_drim$gene_id)
+dex <- unique(final_disc_dex$gene_id)
+
+n12=length(Reduce(intersect,list(dex,drim)))
+n13=length(Reduce(intersect,list(dex,DGE$gene_id)))
+n23=length(Reduce(intersect,list(drim,DGE$gene_id)))
+n123=length(Reduce(intersect,list(drim,dex,DGE$gene_id)))
+
+venn<-draw.triple.venn(ind=F, cat.fontfamily = "sans", fontfamilyi = "sans", area1 = length(dex), area2 = length(drim), area3 = length(DGEPV$gene_id), n12 = n12, n13 = n13, n23 = n23, n123 = n123, category = c("DEXSeq", "DRIMSeq", "DGE"), fill = c(colorFriendly["blue"], colorFriendly["orange"], colorFriendly["green"]), ext.text = TRUE, label.col = "white", alpha = .7,cat.dist=c(.1,.1,.1))
+lay<-rbind(c(1,NA,NA,NA),
+	   c(NA,2,2,NA), 
+	   c(NA,2,2,NA),
+	   c(3,3,3,3),
+	   c(3,3,3,3),
+	   c(3,3,3,3),
+	   c(3,3,3,3))
+
+grid.arrange(textGrob("a"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
+svg(paste0(plotOutDir,"Figure1.svg"),width=7,height=9)
+grid.arrange(textGrob("a"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
+dev.off()
+```
+### Correlation of effect size: DTU, DGE  
+
+```{r Figure5}
+
+#define df with significant (after correction) DTU events in PV from both tools
+final_disc_dex<- df_disc$dex %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>% dplyr::select(tx_id,gene_name,gene_id,l2fc,tx_pvalueStageR,nom_pval,tx_biotype) %>% dplyr::arrange(abs(l2fc))
+final_disc_drim<- df_disc$drim %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>% dplyr::select(tx_id,gene_id,gene_name,l2fc,tx_pvalueStageR,nom_pval,tx_biotype) %>% dplyr::arrange(abs(l2fc))
+
+
+
+dge <- dge_results$PV %>% dplyr::filter(gene_id %in% c(final_disc_drim$gene_id,final_disc_dex$gene_id))
+
+##join dge with dtu results, i.e. select max(abs(l2fc)) in a gene group
+
+drim <- final_disc_drim %>% dplyr::filter(tx_biotype=="protein_coding") 
+dex <- final_disc_dex %>%  dplyr::filter(tx_biotype=="protein_coding") 
+df <- dplyr::bind_rows("DRIMSeq"=drim,"DEXSeq"=dex,.id="Tool")
+dge <- dplyr::left_join(df,dge,by="gene_id",suffix=c("dge","dtu")) %>% dplyr::group_by(Tool,gene_id) %>% dplyr::add_tally() %>% dplyr::mutate(sig=ifelse(padj<0.05,1,0))
+
+twoTx <- ggplot(subset(dge,n==2), aes(x=log2FoldChange,y=l2fc,group=gene_id)) +
+	geom_point(aes(col=padj)) +
+	geom_line(lwd=0.5,col="grey",alpha=.5) +
+	 geom_rug(col=rgb(.5,0,0,alpha=.2)) +
+	facet_wrap(~Tool) +
+	labs(x="Effect size DGE",col="Adj. p-value DGE",y="Effect size DTU",tag="a") +
+	theme_bw() +
+theme(strip.background=element_rect(fill="black"))+
+theme(strip.text= element_text(color="white",face="bold")) + 
+theme(legend.position="bottom") +
+guides(col="none")
+
+OneTx <-  ggplot(subset(dge,n==1), aes(x=log2FoldChange,y=l2fc)) +
+	geom_point(aes(col=padj)) + 	
+geom_smooth(lwd=0.5,col="black") +
+stat_cor(method = "pearson") +
+geom_rug(col=rgb(.5,0,0,alpha=.2)) +
+facet_wrap(~Tool) +
+theme_bw() +
+theme(strip.background=element_rect(fill="black"))+
+theme(strip.text= element_text(color="white",face="bold")) + 
+theme(legend.position="bottom") +
+labs(x="Effect size DGE",y="Effect size DTU",col="Adj. p-value DGE",tag="b")
+
+
+svg(paste0(plotOutDir,"Figure5.svg"))
+grid.arrange(twoTx,OneTx)
+dev.off()
+
+grid.arrange(twoTx,OneTx)
+
+```
+
+## Gene set enrichment analysis  
+
+with STRINGdb and a background comprised of all genes which were expressed enough to survive filtering.  
+
+```{r Table3, eval=F}
+#Load stringdb data for homo sapiens
+string_db <- STRINGdb$new(species=9606,score_threshold=0,version="10")
+
+#subset sig. hits
+final_disc_dex<-obj$main_df$PV$dex %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>% dplyr::select(tx_id,gene_id,gene_name,l2fc,tx_pvalueStageR,nom_pval) %>% dplyr::arrange(abs(l2fc))
+final_disc_drim<-obj$main_df$PV$drim %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>% dplyr::select(tx_id,gene_id,gene_name,l2fc,tx_pvalueStageR,nom_pval) %>% dplyr::arrange(abs(l2fc))
+
+hits <- unique(final_disc_dex$gene_name,final_disc_drim$gene_name)
+#define gene background 
+bg <- unique(df_disc$drim$gene_name,df_disc$dex_gene_name)
+
+#map gene names to what is needed for stringdb
+hits <- string_db$map( data.frame(gene=hits), "gene", removeUnmappedRows = T )   
+bg <- string_db$map( data.frame(gene=bg), "gene", removeUnmappedRows = T )   
+#set srtingdb bckground
+string_db$set_background(bg$STRING_id) 
+
+#"category"      category for which to compute the enrichment (i.e. "Process", "Component", "Function", "KEGG", "Pfam", "InterPro", "Tissue", "Disease".  default "Process")
+PV_bp <- string_db$get_enrichment( hits$STRING_id, category="Process",methodMT = "fdr", iea = TRUE ) %>% dplyr::filter(pvalue_fdr<0.05) %>% tbl_df %>% print(n = Inf)
+PV_cc <- string_db$get_enrichment( hits$STRING_id, category="Component",methodMT = "fdr", iea = TRUE ) %>% dplyr::filter(pvalue_fdr<0.05) %>% tbl_df %>% print(n = Inf)
+PV_mf <- string_db$get_enrichment( hits$STRING_id, category="Function",methodMT = "fdr", iea = TRUE ) %>% dplyr::filter(pvalue_fdr<0.05) %>%  tbl_df %>% print(n = Inf)
+PV_KEGG <- string_db$get_enrichment( hits$STRING_id, category="KEGG",methodMT = "fdr", iea = TRUE ) %>% dplyr::filter(pvalue_fdr<0.05) %>%  tbl_df %>% print(n = Inf)
+
+
+#little helper function to create the input for clustering of pathways
+create_input <- function(stringDBRes,geneDf,stringdb,categoryTmp,hits) {
+
+pathways <- stringDBRes$pvalue_fdr
+names(pathways) <- stringDBRes$term_description
+geneDf <- geneDf %>% dplyr::mutate(pvalue=ifelse(is.na(gene_pvalueStageR),1,gene_pvalueStageR))
+geneDf <- geneDf %>% dplyr::select(gene_id,pvalue,gene_name) %>% dplyr::rename(gene=gene_name)
+#load all annotations and subset by category of intrest e.g. "Process"
+ann = subset(string_db$get_annotations(), category==categoryTmp)
+#subset further to only contain pathways that are in the result list
+ann <- subset(ann,term_id %in% stringDBRes$term_id)
+#create mapping to gene name
+id_map <- string_db$map( data.frame(gene=geneDf$gene), "gene", removeUnmappedRows = T )   
+ann <- dplyr::left_join(ann,id_map,by="STRING_id")
+ann <- na.omit(ann) # basically i dont have all the genes in my data that are in the annotation so i reduce it to my background
+ann <- dplyr::left_join(ann,geneDf ,by="gene")
+info <- stringDBRes %>% dplyr::select(term_id,term_description)
+ann <- left_join(ann,info,by="term_id")
+genesets <- split(ann,f=ann$term_description)# %>% dplyr::select(gene,gene_id,pvalue) 
+genesets <- genesets[names(pathways)]
+
+obj <- list(pathways=as.list(pathways),genesets=genesets)
+return(obj)
+}
+
+#Go categories
+categories <- c("Process","Function","Component") 
+results_string <- list(PV_bp,PV_mf,PV_cc)
+names(results_string) <- categories
+objs<- lapply(categories,function(c)(create_input(stringDBRes=results_string[[c]],geneDf=df_disc$drim,stringdb=string_db,categoryTmp=c)))
+names(objs) <- categories
+
+#cluster pathways
+clusters <- lapply(seq(1,length(objs)),function(i)(run_pathway_vis(input=objs[[i]],plotTitle=categories[[i]],subsetsize=50)))
+saveRDS(clusters,paste0(plotOutDir,"./clusters_stringdb_PV.rds"))
+clusters <- readRDS(paste0(plotOutDir,"./clusters_stringdb_PV.rds"))
+
+#format dataframes for latex
+clusters <- lapply(clusters,function(cl)(
+cl <- cl %>% dplyr::mutate(title=paste0("& ",title)) %>% dplyr::group_by(title) %>% dplyr::mutate(qvalue=p.adjust(fisher(pvalue),method="bonferroni")) %>% dplyr::mutate(qvalue_rounded= paste0(formatC(qvalue,format="E",digits=2),"\\\\")) %>% dplyr::arrange(qvalue) %>% dplyr::distinct(title,qvalue_rounded)
+))
+
+
+write.table(clusters[[1]],file=paste0(tableOutDir,"pathwayClusterGObp.txt"),quote=F,row.names=F,col.names=T,sep="&")
+write.table(clusters[[2]],file=paste0(tableOutDir,"pathwayClusterGOmf.txt"),quote=F,row.names=F,col.names=T,sep="&")
+write.table(clusters[[3]],file=paste0(tableOutDir,"pathwayClusterGOcp.txt"),quote=F,row.names=F,col.names=T,sep="&")
+```
+
+### qPCR results for ZNF189 
+
+```{r Figure2}
+
+
+#define genes
+lab_genes <- c("ZNF189")
+#get transcript info from ensembl
+genesToPlot <- get_gene_info(subset(obj$main_df$PV$drim,gene_name %in% lab_genes)$tx_id,tx=T)
+genesToPlot
+#generate count plots and count dfs for bvoth cohorts for those transcripts
+plotsPV<- plot_genes_cohort(obj=obj,cohort="PV",genes_toplot=genesToPlot,tool="drim",plot=F,onlyNomSig=F,WantJitter=F,conditions=c("CT","PD"))  
+plotsNBB<- plot_genes_cohort(obj=obj,cohort="NBB",genes_toplot=genesToPlot,tool="drim",plot=F,onlyNomSig=F,WantJitter=F,conditions=c("CT","PD"))  
+plots <- append(plotsPV,plotsNBB)
+#qPCR samples
+qPCR_samples<-list("PV"=c("SL283614","SL283585","SL283596"),"NBB"=c( "SL283581" ,"SL283569", "SL283565"))
+#extract counts from plot obj
+dfs <- lapply(seq(1,length(plots)),function(i)(subset(plots[[i]]$data,sample_id %in% unlist(qPCR_samples)) %>% dplyr::select(transcript_id,sample_id,condition,frac,tx_id_label,countType)))
+
+#filtered out transcript: "ENST00000496104" it is not expressed in NBB
+#index 2 and 4 correspond to ZNF
+
+dfs[[1]] <- subset(dfs[[1]],transcript_id != "ENST00000496104")  
+dfs[[2]] <- subset(dfs[[2]],transcript_id != "ENST00000496104")  
+
+#####PLOTTING FUNCTION#########
+
+makeLabPlot <-function(df,tool,tag,legend=F) {
+ p<-ggplot(subset(df,countType=="lab" | countType=="observed_tx"),aes(x=condition,y=frac)) +
+	geom_jitter(position=position_jitter(0.1),size=1.5) + 
+	stat_summary(fun.y = median, geom = "errorbar", aes(ymax = ..y.., ymin = ..y..,col="red"),
+                 width = .75, linetype = "dashed") +
+		    stat_summary(fun.y=median, colour="red", geom="line", aes(group = 1))+
+#  stat_summary(fun.data="median_sdl",  fun.args = list(mult=1), 
+ #             geom="pointrange", color = "red") +
+	facet_grid(cols=vars(tx_id_label),rows=vars(source),scales="free_y") +
+geom_boxplot(data=subset(df,countType == "fitted_tx") %>% dplyr::group_by(condition,transcript_id) %>% dplyr::mutate(mean=median(frac)),aes(x=condition,y=mean,col="blue"),inherit.aes=F,size=0.2) + 
+	labs(x="Condition",y="Relative abundance",title="",tag=tag,col="Median of: ") +
+	theme_bw() +
+	scale_x_discrete(labels=c("0"="CT","1"="PD")) +
+scale_color_manual(values=c("red"="red","blue"="blue"),labels=c("red"="observed values\n (black points)","blue"=paste0("fitted values - ",tool," \n (points not displayed)"))) +
+theme(panel.spacing = unit(1, "lines")) +
+theme(strip.background=element_rect(fill="black"))+
+theme(strip.text= element_text(color="white",face="bold")) 
+ 
+if (legend) {
+p<- p + theme(legend.position="bottom")
+} else
+{
+p <- p + theme(legend.position="none")
+}
+
+return(p)
+}
+
+##### ZNF df ####
+
+znfSilicoObs<-gdata::combine(dfs[[1]],dfs[[2]]) %>% dplyr::select(transcript_id,frac,condition,tx_id_label,countType)
+
+znfLab <- read.csv(znfLabFile,sep="\t")
+colnames(znfLab) <- c("frac","info","condition","transcript_id","tx_id_label","taqman","sybrperc")
+znfLab$tx_id_label <- sapply(znfLab$transcript_id,function(id)(paste0(id,"\nprotein_coding")))
+znfLab <- znfLab %>% dplyr::select(transcript_id,frac,condition,tx_id_label) %>% dplyr::mutate(condition=ifelse(condition=="CT",0,1))
+znfLab$tx_id_label <- as.character(znfLab$tx_id_label)
+znfLab$countType<-rep("lab",nrow(znfLab))
+dfZNF<-gdata::combine(znfSilicoObs,znfLab,names=c("RNASeq","qPCR")) %>% dplyr::filter(!grepl("dge",countType))
+
+
+
+znf<-makeLabPlot(df=dfZNF,tool="DEXSeq",tag="")
+#xpa<-makeLabPlot(df=dfXPA,tool="DRIMSeq",legend=T,tag="b")
+     
+svg(paste0(plotOutDir,"Figure2.svg"))
+znf
+dev.off()
+
+#grid.arrange(znf,xpa)
+
+```
+
+### Differences in DTU genes due to cell correction with oligo and microglia estimates
+
+```{r S3}
+stageRList<- readRDS("../Results/general/noCellCorr/rds/objs_byCohort.rds")
+toolIntersection<-  readRDS("../Results/general/noCellCorr/rds/drim_dex_toolInt.rds")
+DEXSeqResultDf<- readRDS("../Results/general/noCellCorr/rds/dexRes.rds")
+DRIMSeqResultDf<- readRDS("../Results/general/noCellCorr/rds/drimRes.rds")
+DRIMSeqDEXSeqObjs<- readRDS("../Results/general/noCellCorr/rds/Ds.rds")
+
+FilterParam <- readRDS("../Results/general/noCellCorr/rds/filtInfo.rds")
+DRIMSeqDEXSeqObjsPriorFilter<- readRDS("../Results/general/noCellCorr/rds/Ds_unfilt.rds")
+
+df_disc_noCC <- DTU::stageResPlusInfo(genelists=stageRList ,ds=DRIMSeqDEXSeqObjs,cohort="PV") 
+df_repl_noCC <- DTU::stageResPlusInfo(genelists=stageRList,ds=DRIMSeqDEXSeqObjs,cohort="NBB")
+info<-create_sample_info(pheno=metaDataFile,cohort_names=c("PV","NBB"),conditions=c("Control","Case")) 
+obj_noCC<-list(dge=dge_obj,dge_results=dge_results,main_df=list("PV"=df_disc_noCC,"NBB"=df_repl_noCC),Ds=DRIMSeqDEXSeqObjs,res_drim=DRIMSeqResultDf,res_dex=DEXSeqResultDf,stageRList=stageRList,info=info)
+
+
+
+#########################################
+
+finalDTU <- obj$main_df$PV$drim %>% 
+	dplyr::filter(!(is.na(tx_pvalueStageR))) %>% 
+	dplyr::filter(tx_id %in% (subset(obj$main_df$NBB$drim,nom_pval<0.05)$tx_id)) %>% 
+	dplyr::filter(sign(l2fc) == sign(obj$main_df$NBB$drim[match(tx_id,obj$main_df$NBB$drim$tx_id),"l2fc"]))
+
+
+# which of the replicated DTU events were found when not correcting for cell types
+#1. in the final set that replicates
+finalDTU_noCC <- obj_noCC$main_df$PV$drim %>% 
+	dplyr::filter(!(is.na(tx_pvalueStageR))) %>% 
+	dplyr::filter(tx_id %in% (subset(obj$main_df$NBB$drim,nom_pval<0.05)$tx_id)) %>% 
+	dplyr::filter(sign(l2fc) == sign(obj$main_df$NBB$drim[match(tx_id,obj$main_df$NBB$drim$tx_id),"l2fc"]))
+
+consistent_replicated_indpCC_DTU <- finalDTU[which(finalDTU$tx_id %in% finalDTU_noCC$tx_id),]
+
+#which of the replicated DTU events that were identified when ignoring cell changes, was lost through CC?
+
+
+finalDTU_noCC[!(finalDTU_noCC$tx_id %in% finalDTU$tx_id),]
+finalDTU_noCC[!(finalDTU_noCC$gene_id %in% finalDTU$gene_id),]
+
+
+
+n12=length(Reduce(intersect,list(finalDTU$tx_id,finalDTU_noCC$tx_id)))
+n12_g=length(Reduce(intersect,list(unique(finalDTU$gene_id),unique(finalDTU_noCC$gene_id))))
+
+
+
+
+finalDTUdex <- obj$main_df$PV$dex %>% 
+	dplyr::filter(!(is.na(tx_pvalueStageR))) %>% 
+	dplyr::filter(tx_id %in% (subset(obj$main_df$NBB$dex,nom_pval<0.05)$tx_id)) %>% 
+	dplyr::filter(sign(l2fc) == sign(obj$main_df$NBB$dex[match(tx_id,obj$main_df$NBB$dex$tx_id),"l2fc"]))
+
+
+# which of the replicated DTU events were found when not correcting for cell types
+#1. in the final set that replicates
+finalDTU_noCCdex <- obj_noCC$main_df$PV$dex %>% 
+	dplyr::filter(!(is.na(tx_pvalueStageR))) %>% 
+	dplyr::filter(tx_id %in% (subset(obj$main_df$NBB$dex,nom_pval<0.05)$tx_id)) %>% 
+	dplyr::filter(sign(l2fc) == sign(obj$main_df$NBB$dex[match(tx_id,obj$main_df$NBB$dex$tx_id),"l2fc"]))
+
+
+n12dex=length(Reduce(intersect,list(finalDTUdex$tx_id,finalDTU_noCCdex$tx_id)))
+n12_gdex=length(Reduce(intersect,list(unique(finalDTUdex$gene_id),unique(finalDTU_noCCdex$gene_id))))
+
+venn.dex<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",area1=nrow(finalDTUdex),area2=nrow(finalDTU_noCCdex),cross.area=n12dex,category=c("Adj.","Not adj."),
+			      col=c("#440154ff", '#21908dff'),
+          fill = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3)),
+			      ,label.col="black", cat.pos = c(0, 0),
+    lab.cex=1.1)
+venn.dex_g<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",area1=length(unique(finalDTUdex$gene_id)),area2=length(unique(finalDTU_noCCdex$gene_id)),cross.area=n12dex,category=c("Adj.","Not adj."),col=c("#440154ff", '#21908dff'),
+          fill = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3)),  cat.pos = c(0, 0),
+    lab.cex=1.1)
+
+
+venn.drim<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",area1=nrow(finalDTU),area2=nrow(finalDTU_noCC),cross.area=n12,category=c("Adj.","Not adj."),
+			      col=c("#440154ff", '#21908dff'),
+          fill = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3)),
+			      ,label.col="black",cat.pos=c(-20,20),
+    lab.cex=1.1)
+venn.drim_g<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",area1=length(unique(finalDTU$gene_id)),area2=length(unique(finalDTU_noCC$gene_id)),cross.area=n12,category=c("Adj.","Not adj."),col=c("#440154ff", '#21908dff'),
+          fill = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3)),cat.pos=c(-20,25))
+
+
+svg(paste0(plotOutDir,"./S3.svg"),width=9,height=6)
+((as.ggplot(grobTree(venn.drim_g)) + labs(tag="a")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="b")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="c") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="d")))
+dev.off()
+```
+
+### Supplement tables for all dtu genes and events
+
+```{r}
+PVdrim <- obj$main_df$PV$drim %>%
+	    dplyr::select(-rankDex,-toolAdjPval) %>%
+	    dplyr::filter(!is.na(gene_pvalueStageR)) %>%
+	    dplyr::arrange(gene_name) 
+PVdex <- obj$main_df$PV$dex %>%
+	    dplyr::select(-rankDrim,-toolAdjPval) %>%
+	    dplyr::filter(!is.na(gene_pvalueStageR)) %>%
+	    dplyr::arrange(gene_name)  
+NBBdrim <- obj$main_df$NBB$drim %>%
+	    dplyr::select(-rankDex,-toolAdjPval) %>%
+	    dplyr::filter(!is.na(gene_pvalueStageR)) %>%
+	    dplyr::arrange(gene_name) 
+NBBdex <- obj$main_df$NBB$dex %>%
+	    dplyr::select(-rankDrim,-toolAdjPval) %>%
+	    dplyr::filter(!is.na(gene_pvalueStageR)) %>%
+	    dplyr::arrange(gene_name) 
+
+PW <- dplyr::bind_rows("DRIMSeq"=PVdrim,"DEXSeq"=PVdex,.id="tool")
+NBB <-  dplyr::bind_rows("DRIMSeq"=NBBdrim,"DEXSeq"=NBBdex,.id="tool")
+
+S2 <- dplyr::bind_rows("PW"=PW,"NBB"=NBB,.id="cohort")
+
+
+write.table(S2,paste0(tableOutDir,"Add2S2.txt"),quote=F,row.names=F,sep="\t")
+```
+

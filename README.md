@@ -13,16 +13,26 @@ This repository holds all code and data to reproduce results, figures and tables
 ## How to..  
 
 ### Use uploaded result objects (.rds) to generate figures and tables:    
-In your terminal execute:
+In your terminal execute:  
 ```
 git clone https://github.com/fifdick/DTU_in_PD_brain.git
 cd DTU_in_PD_brain
 7z x -so ./results/rds/rds.7z
 tar -zxvf ./results/external/dge_results/DESeqOut_CT.tar.gz
-R CMD INSTALL DTU 
-R CMD check DTU
+# R CMD check DTU 
 R CMD build DTU
+R CMD INSTALL DTU_1.0.tar.gz
 ```
+
+To reduce the results of the gene set enrichment analysis with [stringDB](https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html), we used the code in `./PathCluster`.
+
+```
+# R CMD check PathCluster
+R CMD build PathCluster
+R CMD INSTALL PathCluster_0.2.tar.gz
+```
+
+
 In your R editor open `makeFigures.Rmd` and follow the instructions there.
 
 ### Rerun the analysis from scratch:  
@@ -33,9 +43,9 @@ cd DTU_in_PD_brain
 # unpack the reference .gtf file 
 tar -xzf ./referenceData/extract_me_gtf.gz
 # install the R package to your R
-R CMD INSTALL DTU 
-R CMD check DTU
+# R CMD check DTU 
 R CMD build DTU
+R CMD INSTALL DTU_1.0.tar.gz
 # make the pipeline executable
 chmod +x runDTU.sh
 # potentially change parameters according to the instructions in runDTU.sh
@@ -45,9 +55,19 @@ chmod +x runDTU.sh
 
 * The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.    
 
+
+* Two more steps: extract the DGE results such they can be loaded and install PathCluster. (Functions used to cluster the results of the gene set enrichment analysis; not necessary if you dont want to skip that step in `makeFigures.Rmd`.)   
+
 ```
 # extract DGE results, needed to compare and make figures and tables
 tar -zxvf ./results/external/dge_results/DESeqOut_CT.tar.gz
+
+```
+  
+```
+# R CMD check PathCluster
+R CMD build PathCluster
+R CMD INSTALL PathCluster_0.2.tar.gz
 ```
 
 * Open `./makeFigures.Rmd` in your R editor and follow the instructions there.

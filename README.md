@@ -17,7 +17,8 @@ In your terminal execute:
 ```
 git clone https://github.com/fifdick/DTU_in_PD_brain.git
 cd DTU_in_PD_brain
-tar -xzf ./results/rds/rds.tar.gz
+7z x -so ./results/rds/rds.7z
+tar -zxvf ./results/external/dge_results/DESeqOut_CT.tar.gz
 R CMD INSTALL DTU 
 R CMD check DTU
 R CMD build DTU
@@ -42,7 +43,13 @@ chmod +x runDTU.sh
 ./runDTU.sh
 ```  
 
-* The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.  
+* The analysis is complete when "Sucessfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.    
+
+```
+# extract DGE results, needed to compare and make figures and tables
+tar -zxvf ./results/external/dge_results/DESeqOut_CT.tar.gz
+```
+
 * Open `./makeFigures.Rmd` in your R editor and follow the instructions there.
 
 

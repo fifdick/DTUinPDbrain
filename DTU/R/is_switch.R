@@ -9,7 +9,7 @@
 #' @importFrom magrittr %<>%
 #' @importFrom rlang .data
 # TODO improve this documentation, it sucks.
-isISwitch <- function(df, gene) {
+is_switch <- function(df, gene) {
  control_biotype <- ""
  case_biotype <- ""	
  df_m <- df %>% dplyr::group_by(.data$gene_id, .data$transcript_id, .data$condition) %>%

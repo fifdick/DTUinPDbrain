@@ -10,7 +10,7 @@
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @export 
-stageResPlusInfo <- function(genelists,ds,cohort) {
+stage_res_plus_info <- function(genelists, ds, cohort) {
 # starting with DRIMSeq:
 nom_pval <- DRIMSeq::results(ds$Ds_drim[[cohort]], level = "feature") %>%
  dplyr::select(.data$feature_id, .data$pvalue, .data$adj_pvalue) %>%

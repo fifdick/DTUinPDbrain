@@ -35,7 +35,7 @@ plot_gene <- function(all_vals, p_gene_id, genes_toplot, out = "./", plot = T, t
  debug_d <- df
  # get tx biotype info for strip labels
  gene_info <- get_gene_info(unique(df$transcript_id), tx = TRUE)
- df  <- dplyr::left_join(df, gene_info[, c("gene_id", "transcript_id", "tx_biotype")], by = c("gene_id", "tx_id"))
+ df  <- dplyr::left_join(df, gene_info[, c("gene_id", "tx_id", "tx_biotype")], by = c("gene_id", "transcript_id" = "tx_id"))
  df %<>% dplyr::mutate(tx_id_label = dplyr::case_when(
   grepl("ENSG", .data$transcript_id) ~ paste(.data$transcript_id, "Gene_expression", "(count scale)", sep = "\n"),
   .data$tx_biotype == "nonsense_mediated_decay" ~ paste(.data$transcript_id, "nonsense", "mediated_decay", sep = "\n"),
@@ -76,7 +76,7 @@ plot_gene <- function(all_vals, p_gene_id, genes_toplot, out = "./", plot = T, t
  }
  
  selective_jitter <- function(x, g) {	
-  x <-as.numeric(x) - 1
+  x <- as.numeric(x) - 1
   x[which(g == "1")] <- jitter_ud(x[which(g == "1")])
    return(x)	
  }
@@ -85,16 +85,17 @@ plot_gene <- function(all_vals, p_gene_id, genes_toplot, out = "./", plot = T, t
  # create column x defined by jitter function
  # create helper function to summerize significance
  df %<>% dplyr::mutate(fitted = ifelse(grepl("observed", .data$countType), "0", "1")) %>% 
-  dplyr::mutate(x = selective_jitter(.data$condition, .data$fitted)) %>% 
   dplyr::mutate(boxCol = dplyr::case_when(
    .data$nomSig == 1 && .data$sig == 0 ~ 1,
    .data$nomSig == 0 && .data$sig == 0 ~ 0,
    .data$nomSig == 1 && .data$sig == 1 ~ 2,
-   TRUE ~ NA )) #a transcript is not nominally significant but its adj. pvalue is?!
+   TRUE ~ -1 )) #a transcript is not nominally significant but its adj. pvalue is?!
     #(After correction significance is read off the main_df and the tx_pvalueStageR column)
 
  the_plot <- function(vals, want_jitter = TRUE, tool, conditions) {
-  if (want_jitter == TRUE) {	
+  if (want_jitter == TRUE) {
+	  # TODO FIX! ERROR
+   vals %<>%  dplyr::mutate(x = selective_jitter(.data$condition, .data$fitted)) 
    p <- ggplot(subset(vals, countType == fitted_tx), aes(x = as.numeric(condition) - 1, y = frac, color = as.factor(boxCol))) +
     geom_boxplot(aes(group = condition), lwd = 0.2, outlier.size = 0, coef = 0) + 
     geom_point(data = subset(vals, countType == "fitted_tx" | countType == "observed_tx"),

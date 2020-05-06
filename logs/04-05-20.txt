@@ -410,3 +410,330 @@ The following object is masked from 'package:stats':
     filter
 
  [92mSucessfully intersected gene_lists, results can be found in ./results/[0m
+ [92mSaving results to ./results/[0m
+ [92musing ./referenceData/ucsc.hg19.gtf as annotation file[0m
+ [92musing transcript abundances found in ./rawData[0m
+./runDTU.sh: line 53:  \e[92mrunning three DTU pipelines in sequence\e[0m: command not found
+ [92mNow running dexStage[0m
+ [92mNow running drimStage[0m
+$today
+[1] "04-05-20"
+
+$salmonDir
+[1] "./rawData"
+
+$metaData
+[1] "./metaData/phenoData.csv"
+
+$verbose
+[1] TRUE
+
+$ensemblVersion
+[1] "75"
+
+$namesCohorts
+[1] "discovery:replication"
+
+$conditionGroups
+[1] "Control:Case"
+
+$batchVars
+[1] "rin:age_years:sex:Microglia_Genes:Oligo_Genes"
+
+$gtfFile
+[1] "./referenceData/ucsc.hg19.gtf"
+
+$filterParams
+[1] "10:10"
+
+$outDir
+[1] "./results/drimStage"
+
+$postHocFilter
+[1] "FALSE"
+
+$zcalingMethod
+[1] "scaledTPM"
+
+$help
+[1] FALSE
+
+Loading required package: ddpcr
+$today
+[1] "04-05-20"
+
+$salmonDir
+[1] "./rawData"
+
+$metaData
+[1] "./metaData/phenoData.csv"
+
+$verbose
+[1] TRUE
+
+$ensemblVersion
+[1] "75"
+
+$namesCohorts
+[1] "discovery:replication"
+
+$conditionGroups
+[1] "Control:Case"
+
+$batchVars
+[1] "rin:age_years:sex:Microglia_Genes:Oligo_Genes"
+
+$gtfFile
+[1] "./referenceData/ucsc.hg19.gtf"
+
+$filterParams
+[1] "10:10"
+
+$outDir
+[1] "./results/dexStage"
+
+$postHocFilter
+[1] "FALSE"
+
+$zcalingMethod
+[1] "scaledTPM"
+
+$help
+[1] FALSE
+
+Loading required package: ddpcr
+
+Attaching package: ‘ddpcr’
+
+The following object is masked from ‘package:stats’:
+
+    step
+
+
+Attaching package: ‘ddpcr’
+
+The following object is masked from ‘package:stats’:
+
+    step
+
+[1] "creating output dirs:"
+Warning message:
+In dir.create(file.path(opt$o, "Ds")) :
+  './results/drimStage/Ds' already exists
+[1] "./results/drimStage/Ds"
+Warning message:
+In dir.create(file.path(opt$o, "Ss")) :
+  './results/drimStage/Ss' already exists
+[1] "./results/drimStage/Ss"
+Warning message:
+In dir.create(file.path(opt$o, "genes")) :
+  './results/drimStage/genes' already exists
+[1] "./results/drimStage/genes"
+Parsed with column specification:
+cols(
+  brain_bank = col_character(),
+  age_years = col_double(),
+  sex = col_character(),
+  condition = col_character(),
+  rin = col_double(),
+  Microglia_Genes = col_double(),
+  Oligo_Genes = col_double(),
+  procedence = col_character(),
+  sample_id = col_character()
+)
+   Case    Case Control    Case Control    Case Control    Case Control    Case 
+      1       1       0       1       0       1       0       1       0       1 
+Control    Case Control    Case Control    Case Control    Case Control    Case 
+      0       1       0       1       0       1       0       1       0       1 
+Control    Case    Case    Case    Case    Case    Case Control 
+      0       1       1       1       1       1       1       0 
+Levels: 0 1
+Control    Case Control    Case Control    Case Control    Case Control    Case 
+      0       1       0       1       0       1       0       1       0       1 
+Control    Case Control    Case Control    Case Control    Case Control Control 
+      0       1       0       1       0       1       0       1       0       0 
+   Case 
+      1 
+Levels: 0 1
+[1] "creating output dirs:"
+Warning message:
+In dir.create(file.path(opt$o, "Ds")) :
+  './results/dexStage/Ds' already exists
+[1] "./results/dexStage/Ds"
+Warning message:
+In dir.create(file.path(opt$o, "Ss")) :
+  './results/dexStage/Ss' already exists
+[1] "./results/dexStage/Ss"
+Warning message:
+In dir.create(file.path(opt$o, "genes")) :
+  './results/dexStage/genes' already exists
+[1] "./results/dexStage/genes"
+Joining, by = c("sample_id", "rin")
+Joining, by = c("sample_id", "rin")
+Parsed with column specification:
+cols(
+  brain_bank = col_character(),
+  age_years = col_double(),
+  sex = col_character(),
+  condition = col_character(),
+  rin = col_double(),
+  Microglia_Genes = col_double(),
+  Oligo_Genes = col_double(),
+  procedence = col_character(),
+  sample_id = col_character()
+)
+   Case    Case Control    Case Control    Case Control    Case Control    Case 
+      1       1       0       1       0       1       0       1       0       1 
+Control    Case Control    Case Control    Case Control    Case Control    Case 
+      0       1       0       1       0       1       0       1       0       1 
+Control    Case    Case    Case    Case    Case    Case Control 
+      0       1       1       1       1       1       1       0 
+Levels: 0 1
+Control    Case Control    Case Control    Case Control    Case Control    Case 
+      0       1       0       1       0       1       0       1       0       1 
+Control    Case Control    Case Control    Case Control    Case Control Control 
+      0       1       0       1       0       1       0       1       0       0 
+   Case 
+      1 
+Levels: 0 1
+Joining, by = c("sample_id", "rin")
+Joining, by = c("sample_id", "rin")
+Import genomic features from the file as a GRanges object ... Import genomic features from the file as a GRanges object ... OK
+Prepare the 'metadata' data frame ... OK
+Make the TxDb object ... OK
+Prepare the 'metadata' data frame ... OK
+Make the TxDb object ... OK
+OK
+'select()' returned 1:many mapping between keys and columns
+reading in files with read_tsv
+1 'select()' returned 1:many mapping between keys and columns
+reading in files with read_tsv
+1 2 3 2 4 3 4 5 6 5 7 6 8 7 9 8 10 9 11 10 12 11 13 12 14 13 15 14 16 15 16 17 18 17 19 18 20 19 21 20 22 21 23 22 24 23 25 24 26 25 27 26 28 27 
+reading in files with read_tsv
+1 28 2 
+reading in files with read_tsv
+1 3 2 4 3 5 4 6 7 8 9 10 5 11 12 13 14 15 16 17 6 18 19 20 21 
+[1] "range of library sizes"
+[1] 28.35975 48.90989
+[1] 30.08434 53.77734
+[1] "Number of transcripts whose ids are NOT represented in the annotation df"
+[1] 0
+[1] 0
+[1] "Dim of annot:"
+[1] 177957      3
+[1] "Dim of annot:"
+[1] 175863      3
+[1] "Are annotation and data transcript ids equal?"
+[1] TRUE
+[1] TRUE
+7 8 9 An object of class dmDSdata 
+with 51028 genes and 28 samples
+* data accessors: counts(), samples()
+An object of class dmDSdata 
+with 50228 genes and 21 samples
+* data accessors: counts(), samples()
+10 11 12 13 14 15 16 17 18 19 20 21 
+[1] "range of library sizes"
+[1] 28.35975 48.90989
+[1] 30.08434 53.77734
+[1] "Number of transcripts whose ids are NOT represented in the annotation df"
+[1] 0
+[1] 0
+[1] "Dim of annot:"
+[1] 177957      3
+[1] "Dim of annot:"
+[1] 175863      3
+[1] "Are annotation and data transcript ids equal?"
+[1] TRUE
+[1] TRUE
+[1] "DESIGN: Formula!!"
+~condition + rin + age_years + sex + Microglia_Genes + Oligo_Genes
+<environment: 0x55d587e81cc0>
+[1] "Design matrix:"
+   (Intercept) condition1 rin age_years sexF Microglia_Genes Oligo_Genes
+1            1          1 3.1        86    0      0.76743547   0.6944730
+2            1          1 5.1        88    0      0.59531247   0.5917641
+3            1          0 5.9        87    0      0.34167025   0.2047591
+4            1          1 5.6        72    0      0.41751120   0.6079671
+5            1          0 6.0        87    0      0.73812572   0.6600093
+6            1          1 5.9        95    0      0.57272512   0.5574278
+7            1          0 4.1        86    1      0.53564078   0.4651206
+8            1          1 4.5        69    0      0.56294464   0.8728137
+9            1          0 5.9        85    1      0.30567607   0.4545943
+10           1          1 6.1        82    0      0.24935216   0.5620994
+11           1          0 3.4        79    0      0.54492163   0.4631006
+12           1          1 5.4        81    1      0.62342320   0.8833817
+13           1          0 5.1        66    1      0.55315735   0.4259443
+14           1          1 7.2        82    0      0.25368419   0.8205040
+15           1          0 3.6        66    0      0.48811205   0.3688411
+16           1          1 6.2        78    1      0.44606295   0.7721080
+17           1          0 4.9        65    0      0.41553880   0.5257341
+18           1          1 6.6        90    1      0.33679981   1.0000000
+19           1          0 6.5        63    0      0.00000000   0.3639463
+20           1          1 5.9        72    1      0.47820941   0.7875313
+21           1          0 6.1        63    1      0.09907903   0.3667543
+22           1          1 5.3        74    0      0.28126333   0.6118130
+23           1          1 4.1        80    1      0.67980822   0.6250985
+24           1          1 6.9        86    1      0.42165248   0.3406830
+25           1          1 5.8        85    0      0.54777135   0.4831787
+26           1          1 4.2        83    1      0.73720750   0.7312059
+27           1          1 3.0        69    1      0.48266486   0.4833347
+28           1          0 5.6        88    1      1.00000000   0.6783083
+attr(,"assign")
+[1] 0 1 2 3 4 5 6
+attr(,"contrasts")
+attr(,"contrasts")$condition
+[1] "contr.treatment"
+
+attr(,"contrasts")$sex
+[1] "contr.treatment"
+
+! Using a subset of 0.1 genes to estimate common precision !
+
+An object of class dmDSdata 
+with 51028 genes and 28 samples
+* data accessors: counts(), samples()
+An object of class dmDSdata 
+with 50228 genes and 21 samples
+* data accessors: counts(), samples()
+[1] "DESGIN:"
+~sample + exon + rin:exon + age_years:exon + sex:exon + Microglia_Genes:exon + 
+    Oligo_Genes:exon + condition:exon
+<environment: 0x559ba76f2620>
+[1] "DESGIN reduced:"
+~sample + exon + rin:exon + age_years:exon + sex:exon + Microglia_Genes:exon + 
+    Oligo_Genes:exon
+<environment: 0x559ba76f2620>
+converting counts to integer mode
+  the design formula contains a numeric variable with integer values,
+  specifying a model with increasing fold change for higher values.
+  did you mean for this to be a factor? if so, first convert
+  this variable to a factor using the factor() function
+! Using common_precision = 39.7677 as prec_init !
+
+[1] "DESGIN:"
+~sample + exon + rin:exon + age_years:exon + sex:exon + Microglia_Genes:exon + 
+    Oligo_Genes:exon + condition:exon
+<environment: 0x559babb25240>
+[1] "DESGIN reduced:"
+~sample + exon + rin:exon + age_years:exon + sex:exon + Microglia_Genes:exon + 
+    Oligo_Genes:exon
+<environment: 0x559babb25240>
+converting counts to integer mode
+  the design formula contains a numeric variable with integer values,
+  specifying a model with increasing fold change for higher values.
+  did you mean for this to be a factor? if so, first convert
+  this variable to a factor using the factor() function
+The returned adjusted p-values are based on a stage-wise testing approach and are only valid for the provided target OFDR level of 5%. If a different target OFDR level is of interest,the entire adjustment should be re-run. 
+
+The returned adjusted p-values are based on a stage-wise testing approach and are only valid for the provided target OFDR level of 5%. If a different target OFDR level is of interest,the entire adjustment should be re-run. 
+
+Warning messages:
+1: Setting row names on a tibble is deprecated. 
+2: Setting row names on a tibble is deprecated. 
+3: Column `sample_id` joining factor and character vector, coercing into character vector 
+4: Column `sample_id` joining factor and character vector, coercing into character vector 
+5: In .get_cds_IDX(mcols0$type, mcols0$phase) :
+  The "phase" metadata column contains non-NA values for features of type
+  stop_codon. This information was ignored.
+ [92mDone!Check Results in ./results/[0m

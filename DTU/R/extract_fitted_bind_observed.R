@@ -29,7 +29,7 @@ extract_fitted_bind_observed <- function(ds_obj, dge_obj = NULL, observed_counts
   #DRIMSeq
   fitted_props <- DRIMSeq::proportions(ds_obj)
   fitted_props <- reshape2::melt(fitted_props, id.vars = c("gene_id", "feature_id"), variable.name = "sample_id") %>% dplyr::group_by(.data$sample_id, .data$gene_id)
-  colnames(fittedProps) <- c("gene_id", "transcript_id", "sample_id", "frac")
+  colnames(fitted_props) <- c("gene_id", "transcript_id", "sample_id", "frac")
  }
  if (!is.null(dge_obj)) {
   dds <- dge_obj
@@ -43,7 +43,7 @@ extract_fitted_bind_observed <- function(ds_obj, dge_obj = NULL, observed_counts
    reshape2::melt(.) 
   colnames(observed_dge) <- c("sample_id", "gene_id", "frac")
   observed_dge %<>% dplyr::mutate(transcript_id = .data$gene_id) %>% dplyr::select(.data$gene_id, .data$transcript_id, .data$sample_id, .data$frac)
-  df <- dplyr::bind_rows("fitted_tx" = fitted_props, "fitted_dge" = fitted.common.scale_dge, "observed_tx" = observed_counts, "observed_dge" = observed_dge, .id ="countType")
+  df <- dplyr::bind_rows("fitted_tx" = fitted_props, "fitted_dge" = fitted.common.scale_dge, "observed_tx" = observed_counts, "observed_dge" = observed_dge, .id = "countType")
  } else {
   df <- dplyr::bind_rows("fitted_tx" = fitted_props, "observed_tx" = observed_counts, .id = "countType")
  }

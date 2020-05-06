@@ -19,7 +19,7 @@ add_condition_and_sig_tx <- function(alpha=0.05, info, countsmelted, main_df) {
  countsmelted %<>% dplyr::mutate(sig = case_when(
   grepl("observed", .data$countType) ~ 0,
   grepl("dge", .data$countType) & padj_dge < alpha ~ 1,
-  grepl("dge", .data$coun_type) & padj_dge >= alpha ~ 0,
+  grepl("dge", .data$countType) & padj_dge >= alpha ~ 0,
   !(is.na(.data$tx_pvalueStageR)) ~ 1,
   is.na(.data$tx_pvalueStageR) ~ 0
   ), nomSig = case_when(

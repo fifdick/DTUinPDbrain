@@ -750,7 +750,7 @@ plots <- DTU::plot_genes_cohort(genes_toplot = genes_to_plot ,
 
 SNCA,PARK2,PARK7,GBA,PINK1,SRRM2,GBA,FBXO7,LRRK2  
 
-```{r ASPD, eval=F}
+```{r ASPD}
 obj$main_df$discovery$drim %>% dplyr::filter(gene_name == "SNCA")
 obj$main_df$discovery$dex %>% dplyr::filter(gene_name == "SNCA")
 obj$main_df$discovery$drim %>% dplyr::filter(gene_name == "PARK7")
@@ -879,7 +879,7 @@ dev.off()
 With STRINGdb and a background comprised of all genes which showed sufficient expression to survive filtering.  
 (Discovery cohort and DRIMSeq)
 
-```{r Table3, eval=F}
+```{r Table3}
 # Load stringdb data for homo sapiens
 string_db <- STRINGdb$new(species=9606,score_threshold=0,version="10")
 # Define hits

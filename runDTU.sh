@@ -40,6 +40,7 @@ pipes=($drim $dex)
 
 
 timestamp=$(date +%s)
+timestamp="04-05-20"
 LOG_FILE="$timestamp"
 LOG_FILE="./logs/"$LOG_FILE".txt"
 
@@ -149,7 +150,7 @@ echo "$gene_paths"
 
 
 mkdir -p ""$out"rds/"
-if Rscript  --vanilla "$intersect" -g "$gene_paths" -d "$Ds_paths" -n "$cohort_names" -o ""$out"rds/" -f "$filtInfo_paths" -u "$Ds_unfilt_paths" ; then
+if Rscript  --vanilla "$intersect" -t "$timestamp" -g "$gene_paths" -d "$Ds_paths" -n "$cohort_names" -o ""$out"rds/" -f "$filtInfo_paths" -u "$Ds_unfilt_paths" ; then
 		echo -e " \e[92mSucessfully intersected gene_lists, results can be found in "$out"\e[0m"
 	else
 		echo -e "\e[31mIntersecting geneLists failed\e[0m"

@@ -3,6 +3,7 @@
 suppressPackageStartupMessages(require(optparse)) 
 
 option_list <- list(
+   make_option(c("-t", "--timeStamp"), action = "store", default = "", type = "character"),
   make_option(c("-g", "--geneListPaths"), action = "store", default = NA, type = "character",
               help = "path to gene lists separated by colon :"),
  make_option(c("-n", "--cohortNames"), action = "store", default = "NBB:PV", type = "character",
@@ -74,11 +75,15 @@ drim_res <- lapply(Ds$Ds_drim, function(ds) {
  return(as.data.frame(DRIMSeq::results(ds, level = "feature")))
 })
 
-saveRDS(objs_by_cohort, file = paste0(opt$o, "objs_byCohort.rds"))
-saveRDS(tool_int, file = paste0(opt$o, "drim_dex_toolInt.rds"))
-saveRDS(dex_res, file = paste0(opt$o, "dexRes.rds"))
-saveRDS(drim_res, file = paste0(opt$o, "drimRes.rds"))
-saveRDS(Ds, file = paste0(opt$o, "Ds.rds"))
-saveRDS(Ds_unfilt, file = paste0(opt$o, "Ds_unfilt.rds"))
-saveRDS(filt_info, file = paste0(opt$o, "filtInfo.rds"))
+# Create main df with all results combined
+dfList  <-  lapply(DTU::split_colon(opt$cohortNames), function(cohort) {
+ DTU::stage_res_plus_info(genelists = objs_by_cohort, ds = Ds, cohort = cohort)  
+})
+names(dfList) <- DTU::split_colon(opt$cohortNames)
+# Create object (dge and info is added later)
+obj <- list(dge = NULL, dge_results = NULL, main_df = dfList,
+	    Ds = Ds, Ds_unfilt = Ds_unfilt, tool_int = tool_int, res_drim = drim_res, res_dex = dex_res,
+	    stageRList = objs_by_cohort, info = NULL, filt_info = filt_info
+		) 
+saveRDS(obj, file = paste0(opt$o, "obj", opt$t, ".rds"))
 

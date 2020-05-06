@@ -159,6 +159,8 @@ if (!is.na(opt$s) & !is.na(opt$m) & !is.na(opt$g)) {
  filt_info <- lapply(data$obj, function(cohort_obj) { return(cohort_obj$filt_info) })
  names(filt_info) <- names(data$info)
  #filter model and fit with DRIMSeq
+# There are estimations in DRIMSeq and sometimes results differ slightly
+ set.seed(1)
  Res <- DTU::run_drim(data$info, data$obj, covariates = covariates)
  #set timestamp for saving objects
  today <- as.character(opt$t)

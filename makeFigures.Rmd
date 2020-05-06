@@ -148,14 +148,14 @@ We use the counts in CPM to calculate rowwise means and medians to see differenc
 
 ```{r Figure3}
 # calculated CPMs from counts for comparison of expression. CPMs were calculated with a librarysize per sample based on all transcripts, i.e. before filtering
-gene_info <- DTU::get_gene_info(DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$discovery)$feature_id, tx = TRUE) %>%
+gene_info <- DTU::get_gene_info(DRIMSeq::counts(obj$Ds_unfilt$Ds_drim_unfilt$discovery)$feature_id, tx = TRUE) %>%
 	dplyr::select(tx_biotype, tx_id)
 # discovery cohort 
-CPMs <- DRIMSeq::counts(Ds_unfilt$Ds_drim_unfilt$discovery) %>%
+CPMs <- DRIMSeq::counts(obj$Ds_unfilt$Ds_drim_unfilt$discovery) %>%
 	dplyr::rename(tx_id = feature_id) %>% 
 	dplyr::mutate_at(grep("\\.", colnames(.)), ~. / sum(.) * 1000000)
 
-CPMs_filtered <- CPMs %>% dplyr::filter(tx_id %in% DRIMSeq::counts(DRIMSeqDEXSeqObjs$Ds_drim$discovery)$feature_id)
+CPMs_filtered <- CPMs %>% dplyr::filter(tx_id %in% DRIMSeq::counts(obj$Ds$Ds_drim$discovery)$feature_id)
 
 after <- left_join(CPMs_filtered, gene_info, by = "tx_id") %>%
 	mutate(rowMeans = rowMeans(.[grep("\\.", names(.))])) %>% 
@@ -1065,7 +1065,7 @@ dev.off()
 
 ### Differences in DTU genes due to cell correction with oligo and microglia estimates
 
-```{r S3 echo=F}
+```{r S3, echo=F}
 # replicated DTU events of DRIMSeq (sig after stageR and nom. sig in replication cohort, as well as
 # agreeing on the direction of effect size (sign)
 finalDTU <- final_disc_drim %>% 

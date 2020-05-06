@@ -217,7 +217,7 @@ Volcano and MA plots
 ```{r S1}
 # generate dataframe with expression counts for plotting 
 # DRIMSeq
-exprMixed_drim <-  DRIMSeq::counts(DRIMSeqDEXSeqObjs$Ds_drim$discovery) %>%
+exprMixed_drim <-  DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>%
 	dplyr::mutate(meanExpr = rowMeans(as.matrix(.[grep('\\.', names(.))]))) %>%
 	dplyr::select(feature_id, meanExpr) %>% dplyr::rename(tx_id = feature_id)
 # join the general discovery DRIMSeq dataframe that we generated at the start, 
@@ -225,7 +225,7 @@ exprMixed_drim <-  DRIMSeq::counts(DRIMSeqDEXSeqObjs$Ds_drim$discovery) %>%
 df_drimTxLevel <- left_join(df_disc$drim, exprMixed_drim, by = "tx_id") %>%
 	dplyr::rename(rankOtherTool = rankDex) 
 # get the gene-level p-values for DRIMSeq 
-geneLevel_drim <- as.data.frame(DRIMSeq::results(DRIMSeqDEXSeqObjs$Ds_drim$discovery)) %>%
+geneLevel_drim <- as.data.frame(DRIMSeq::results(obj$Ds$Ds_drim$discovery)) %>%
 	dplyr::select(gene_id, pvalue) %>% dplyr::rename(qvalue = pvalue)
 # group dataframe by gene_id and calculate how many transcripts each gene has,
 # then only keep one (randomly chosen) transcript per gene, so we keep only the gene information 
@@ -235,8 +235,8 @@ df_drim <- df_drimTxLevel %>% dplyr::group_by(gene_id) %>%
 df_drim <- left_join(df_drim, geneLevel_drim, by = "gene_id") 
 # DEXSeq
 # extract count data from DEXSeq using their accesor function and modify the tx_id column (original column is a concat of featureID and groupID)
-tx_id <- as.data.frame(stringr::str_split(rownames(DEXSeq::featureCounts(DRIMSeqDEXSeqObjs$Ds_dex$discovery)), ":", simplify = TRUE))[, 2] 
-exprMixed_dex <-  as.data.frame(DEXSeq::featureCounts(DRIMSeqDEXSeqObjs$Ds_dex$discovery)) %>%
+tx_id <- as.data.frame(stringr::str_split(rownames(DEXSeq::featureCounts(obj$Ds$Ds_dex$discovery)), ":", simplify = TRUE))[, 2] 
+exprMixed_dex <-  as.data.frame(DEXSeq::featureCounts(obj$Ds$Ds_dex$discovery)) %>%
 	dplyr::mutate(meanExpr = rowMeans(.)) %>%
 	dplyr::select(meanExpr)  
 exprMixed_dex$tx_id <- tx_id
@@ -244,7 +244,7 @@ exprMixed_dex$tx_id <- tx_id
 df_dexTxLevel <- left_join(df_disc$dex, exprMixed_dex, by="tx_id") %>%
 	dplyr::rename(rankOtherTool= rankDrim)
 #get the gene-level results 
-geneLevel_dex <- DEXSeq::perGeneQValue(DEXSeq::DEXSeqResults(DRIMSeqDEXSeqObjs$Ds_dex$discovery, independentFiltering = FALSE))
+geneLevel_dex <- DEXSeq::perGeneQValue(DEXSeq::DEXSeqResults(obj$Ds$Ds_dex$discovery, independentFiltering = FALSE))
 geneLevel_dex <- data.frame(gene_id = names(geneLevel_dex), qvalue = geneLevel_dex)
 #count number of transcripts per gene
 df_dex <- df_dexTxLevel %>% dplyr::group_by(gene_id) %>% dplyr::mutate(ntx = n()) 

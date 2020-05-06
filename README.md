@@ -56,7 +56,7 @@ chmod +x runDTU.sh
 * The analysis is complete when "Successfully intersected gene lists" appears in stdout. Results are in `./results/rds/`, direct tool results are in the respective folders in `./results/`.    
 
 
-* Two more steps: extract the DGE results such they can be loaded and install PathCluster. (Functions used to cluster the results of the gene set enrichment analysis; not necessary if you don't want to skip that step in `makeFigures.Rmd`.)   
+* Two more steps: extract the DGE results such that they can be loaded and install PathCluster. (Functions used to cluster the results of the gene set enrichment analysis; not necessary if you want to skip that step in `makeFigures.Rmd`.)   
 
 ```
 # extract DGE results, needed to compare and make figures and tables

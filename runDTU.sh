@@ -39,8 +39,7 @@ intersect="./scripts/bindToolRes.R"
 pipes=($drim $dex) 
 
 
-timestamp=$(date +%s)
-timestamp="04-05-20"
+timestamp=$(date +%)
 LOG_FILE="$timestamp"
 LOG_FILE="./logs/"$LOG_FILE".txt"
 

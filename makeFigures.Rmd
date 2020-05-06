@@ -66,7 +66,10 @@ dge_results <-list("discovery"=as.data.frame(DESeq2::results(dge_obj$discovery,i
 
 # after unpacking result objects in ./results/rds/
 # Read result object:
-obj <- readRDS("./results/rds/obj.rds")
+# set timestamp to what was defined as paramete in "./runDTU.sh" 
+# (see filename in ./results/rds/)
+timestamp <- "04-05-20"
+obj <- readRDS(paste0("./results/rds/obj",timestamp,".rds"))
 # read main df of analysis without cell correction 
 # (Didnt supply the whole object, to prevent making the git repo too big)
 # (i.e. cosen covariates where (rin,sex,age_years) without Microglia_Genes, Oligi_Genes.

@@ -737,3 +737,111 @@ Warning messages:
   The "phase" metadata column contains non-NA values for features of type
   stop_codon. This information was ignored.
  [92mDone!Check Results in ./results/[0m
+! Using loess fit as a shrinkage factor !
+
+* Fitting the DM model.. 
+
+   Using the regression approach. 
+
+Took 3.4494 seconds.
+
+* Fitting the BB model.. 
+
+   Using the regression approach. 
+
+Took 12.628 seconds.
+
+[1] "DESIGN: Formula!!"
+~condition + rin + age_years + sex + Microglia_Genes + Oligo_Genes
+<environment: 0x55d5ec8f69b0>
+[1] "Design matrix:"
+   (Intercept) condition1 rin age_years sexM Microglia_Genes  Oligo_Genes
+1            1          0 6.6        85    0       0.4987421 0.9975473554
+2            1          1 8.7        84    1       0.3240121 0.0018328674
+3            1          0 6.4        84    0       0.4183276 0.5565905236
+4            1          1 7.2        84    0       0.6846882 0.4610087522
+5            1          0 7.4        76    0       0.4693275 0.5285630163
+6            1          1 6.8        80    0       0.7654064 0.2635423687
+7            1          0 5.4        89    0       0.6079469 0.6994972240
+8            1          1 7.2        81    1       0.3409487 0.5014086707
+9            1          0 6.7       102    1       0.4927664 0.5202564690
+10           1          1 8.1        77    0       0.5016244 0.7979045761
+11           1          0 3.2        91    0       0.9997000 0.7174732651
+12           1          1 8.7        84    1       0.1855178 0.1651442961
+13           1          0 5.9        96    1       0.5856913 0.5672608865
+14           1          1 8.9        75    1       0.2079440 0.4268055809
+15           1          0 7.1        95    1       0.3823650 0.4570116796
+16           1          1 5.9        88    0       0.3586371 0.5296809229
+17           1          0 9.1        78    0       0.0000000 0.0005479058
+18           1          1 6.1        75    1       0.5507681 0.5274797584
+19           1          0 8.0        93    1       0.4545418 0.4377478906
+20           1          0 3.7        73    1       0.7819636 0.4869397285
+21           1          1 6.4        86    1       0.9834100 0.7529893736
+attr(,"assign")
+[1] 0 1 2 3 4 5 6
+attr(,"contrasts")
+attr(,"contrasts")$condition
+[1] "contr.treatment"
+
+attr(,"contrasts")$sex
+[1] "contr.treatment"
+
+! Using a subset of 0.1 genes to estimate common precision !
+
+! Using common_precision = 41.8452 as prec_init !
+
+! Using loess fit as a shrinkage factor !
+
+* Fitting the DM model.. 
+
+   Using the regression approach. 
+
+Took 2.6586 seconds.
+
+* Fitting the BB model.. 
+
+   Using the regression approach. 
+
+Took 9.8968 seconds.
+
+The returned adjusted p-values are based on a stage-wise testing approach and are only valid for the provided target OFDR level of 5%. If a different target OFDR level is of interest,the entire adjustment should be re-run. 
+
+The returned adjusted p-values are based on a stage-wise testing approach and are only valid for the provided target OFDR level of 5%. If a different target OFDR level is of interest,the entire adjustment should be re-run. 
+
+There were 50 or more warnings (use warnings() to see the first 50)
+ [92mDone!Check Results in ./results/[0m
+[92mMoving on to intersecting results[0m
+./results/drimStage/Ds/Ds_04-05-20.rds
+./results/drimStage/Ds/Ds_04-05-20.rds:./results/dexStage/Ds/Ds_04-05-20.rds
+./results/drimStage/Ds/Ds_preFilt_04-05-20.rds:./results/dexStage/Ds/Ds_preFilt_04-05-20.rds
+./results/drimStage/Ds/paramFilt_04-05-20.rds:./results/dexStage/Ds/paramFilt_04-05-20.rds
+./results/drimStage/genes/genelist_04-05-20.rds:./results/dexStage/genes/genelist_04-05-20.rds
+Loading required package: ddpcr
+
+Attaching package: ‘ddpcr’
+
+The following object is masked from ‘package:stats’:
+
+    step
+
+[1] "./results/drimStage/genes/genelist_04-05-20.rds:./results/dexStage/genes/genelist_04-05-20.rds"
+  ./results/drimStage/genes/genelist_04-05-20.rds 
+"./results/drimStage/genes/genelist_04-05-20.rds" 
+   ./results/dexStage/genes/genelist_04-05-20.rds 
+ "./results/dexStage/genes/genelist_04-05-20.rds" 
+Loading required package: ensembldb
+Loading required package: GenomicFeatures
+Loading required package: AnnotationFilter
+
+Attaching package: 'ensembldb'
+
+The following object is masked from 'package:stats':
+
+    filter
+
+Warning messages:
+1: Column `tx_id` joining factor and character vector, coercing into character vector 
+2: Column `tx_id` joining factor and character vector, coercing into character vector 
+3: Column `tx_id` joining factor and character vector, coercing into character vector 
+4: Column `tx_id` joining factor and character vector, coercing into character vector 
+ [92mSucessfully intersected gene_lists, results can be found in ./results/[0m

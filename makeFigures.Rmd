@@ -42,7 +42,7 @@ reloadDTU <- function(){
 We need the metadata file with all sample information, An output directory for all plots and tables, 
 the qPCR results, the DGE results, and all the rds objects that were produced by "./runDTU.sh".  
 
-```{r load, echo=F}
+```{r load, echo=T, message=F, warning=F}
 # Set output directories
 plotOutDir <- "./results/"
 tableOutDir  <- "./results/"
@@ -642,7 +642,7 @@ Number of missing genes in replication due to low expression
 
 print("DEXSeq")
 dexN <- nrow(left_join(final_disc_dex,df_repl$dex[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T))
-NmissingDexRepls <- colSums(is.na(left_join(final_disc_dex,df_repl$dex[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T)))
+NmissingDexRepl <- colSums(is.na(left_join(final_disc_dex,df_repl$dex[,c("tx_id","nom_pval","l2fc")],by="tx_id") %>% dplyr::distinct(gene_id,.keep_all=T)))
 print(NmissingDexRepl["l2fc.y"])
 print(dexN-NmissingDexRepl)
 

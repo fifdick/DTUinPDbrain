@@ -467,24 +467,19 @@ cor <- T
 # create replication cohort df's which contain all transcripts that are in the final discovery cohort list created at the beginning
 final_repl_dex <- df_repl$dex %>% dplyr::filter(tx_id %in% final_disc_dex$tx_id) %>% dplyr::select(tx_id,gene_id,l2fc,nom_pval)
 final_repl_drim <- df_repl$drim %>% dplyr::filter(tx_id %in% final_disc_drim$tx_id) %>% dplyr::select(tx_id ,gene_id,l2fc,nom_pval)
-
 # join cohort dataframes for each tool
 # DEXSeq
 dfDex <- na.omit(left_join(final_disc_dex,final_repl_dex, by = "tx_id", suffix = c("_disc","_repl")))
 # helper coloumn for plottig, whether or not transcript is nominally significant in repl. cohort according to DEXSeq
 dfDex$sigRepl <-  sapply(dfDex$nom_pval_repl, function(i)(ifelse(i < 0.05, 1, 0)))
 dfDex$label <- sapply(dfDex$gene_name, function(g)(ifelse(g %in% c("ZNF189"), as.character(g), "")))
-
 # Do the same for DRIMSeq
 dfDrim <- na.omit(left_join(final_disc_drim, final_repl_drim, by = "tx_id", suffix = c("_disc","_repl")))
 dfDrim$sigRepl <-  sapply(dfDrim$nom_pval_repl, function(i)(ifelse(i < 0.05, 1, 0)))
 dfDrim$label <- sapply(dfDrim$gene_name, function(g)(ifelse(g %in% "ZNF189", as.character(g), "")))
-
 #only one transcript of the lab genes is significant after stageR,
 #thats why we see only one point for each of the two genes in the plot
-
 agreementPlot <- function(df,tag="",legend="none") {
-
 ggplot(data=df,aes(x=l2fc_repl,y=l2fc_disc)) +
 geom_point(aes(col=as.factor(sigRepl)),alpha=.3) +
 stat_density2d(col="black",size=0.3) +
@@ -507,43 +502,35 @@ theme(strip.text= element_text(color="white",face="bold")) +
  guides(fill = FALSE, size = FALSE) +
 theme(legend.position = legend)
 }
-
 df <- dfDex %>% dplyr::bind_rows("DEXSeq" = ., "DRIMSeq" = dfDrim, .id = "Tool")          
 nrow(dfDrim)
 cor(dfDrim$l2fc_repl, dfDrim$l2fc_disc)
 cor.test(sign(dfDrim$l2fc_repl), sign(dfDrim$l2fc_disc))
-
 p <- agreementPlot(df,tag="b",legend="right")
-
 print("percent agreement dex")
 print(formatC(100*(nrow(subset(dfDex, sign(l2fc_disc) == sign(l2fc_repl))) / nrow(dfDex))))
 print("percent agreement drim")
 print(formatC(100*(nrow(subset(dfDrim, sign(l2fc_disc) == sign(l2fc_repl))) / nrow(dfDrim))))
-
 #Basically this is the same as above just that this time we do use all transcripts of discovery not only the ones which survived stageR correction
 #This is only done for DRIMSeq this time
 # define ids which are in both cohorts
-
 ids <- Reduce(intersect,list(df_repl$drim$tx_id,df_disc$drim$tx_id))
 # merge ids with replication df
 df <- left_join(data.frame(tx_id = ids), df_repl$drim, by = "tx_id", suffix = c("","replication"))
 # add discovery df
 df <- left_join(df, df_disc$drim, by = "tx_id", suffix = c("_repl","_disc"))
-
 #helper columns for plotting. 
 #disc repl +(disc sig)(repl sig)(&&)  (||)
 #   1  -1  0	1	1 	1  	1	
 #  -1   2  1	0	0	0	0	
 #   1   2  3	1	0	0	1	
 #  -1  -1  2 	0	1	0	1
-
 #TODO: replace with dplyr instead of using sapply
 df$sigDisc <- sapply(df$nom_pval_disc, function(i)(ifelse(i < 0.05, 1, -1)))
 df$sigRepl <-  sapply(df$nom_pval_repl,function(i)(ifelse(i < 0.05, -1, 2)))
 df$sigCol <- as.factor(sapply(seq(1, nrow(df)), function(i)(df[i, "sigDisc"] + df[i, "sigRepl"])))
 # for plot legend
 df$sigColLabel <- plyr::revalue(df$sigCol, c("0" = "Sig. in both cohorts", "1" = "Not sig. in either cohort", "3" = "Sig. in the discovery cohort only", "-2" = "Sig. in the replication cohort only"))
-
 #replace stageR assigned NA value with 1s 
 df$tx_pvalueStageR_repl <- sapply(df$tx_pvalueStageR_repl, function(i)(ifelse(is.na(i), 1, i)))
 df$tx_pvalueStageR_disc <- sapply(df$tx_pvalueStageR_disc, function(i)(ifelse(is.na(i), 1, i)))
@@ -557,10 +544,6 @@ print("percentage of tx agreeing on direction disc. cohort and repl. cohort")
 print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in both cohorts"))/nrow(subset(df,sigColLabel=="Sig. in both cohorts")))))
 print("percentage of tx agreeing on direction repl. cohort not disc. cohort")
 print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in the replication cohort only"))/nrow(subset(df,sigColLabel=="Sig. in the replication cohort only")))))
-print("percentage of tx agreeing on direction not repl. cohort and not disc. cohort")
-print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Not sig. in either cohort"))/nrow(subset(df,sigColLabel== "Not sig. in either cohort")))))
-
-
 #effect size agreement plot
 esa_plot <- ggplot(data=df,aes(x=l2fc_repl,y=l2fc_disc)) +   
 geom_point(aes(col=as.numeric(tx_pvalueStageR_disc)),alpha=0.5) +
@@ -579,14 +562,12 @@ theme(strip.background=element_rect(fill="black"))+
 theme(strip.text= element_text(color="white",face="bold")) +
 guides(alpha = FALSE, size = FALSE) +
 theme(legend.position="right")
-
 if (cor == TRUE){
 esa_plot <- esa_plot + 
 	stat_cor()
 p <- p +
 	stat_cor()
 }
-
 svg(paste0(plotOutDir,"Figure6.svg"),width=12,height=12)
 esa_plot / p + plot_layout(widths=c(1.5,1))
 dev.off()
@@ -595,38 +576,27 @@ dev.off()
 Agreement on direction of effect size
 (run previous chunk to create df used here)
 
-```{r, dependson="Figure6"}
+```{r replicationCor}
+
 #df %<>% dplyr::filter(!(is.na(gene_id_repl)))
 # not sig in either cohort
 nonSig <- subset(df, sigCol == 1)
 nrow(nonSig)
 table(nonSig$agreelfc)[2]/nrow(nonSig)
 nrow(df)
-cor(sign(nonSig$l2fc_disc),sign(nonSig$l2fc_repl))
 cor.test(sign(nonSig$l2fc_disc),sign(nonSig$l2fc_repl))
-
-mat <- rbind(c(sum(sign(nonSig$l2fc_repl)==1),sum(sign(nonSig$l2fc_repl)!=1)),
-	    c( sum(sign(nonSig$l2fc_disc)==1),sum(sign(nonSig$l2fc_disc)!=1)))
-
-
 #sig in Discovery
-sig<- subset(df, sigCol == 3)
+sig<- subset(df, sigCol == 3) 
 nrow(sig)
 cor.test(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
-cor(sig$l2fc_disc,sig$l2fc_repl)
-t.test(as.numeric(sig$agreelfc)-1,as.numeric(nonSig$agreelfc)-1)
-
 #sig in both
 sig<- subset(df, sigCol == 0)
 nrow(sig)
-cor(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
 cor.test(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
-
 #sig in Repl
 sig <- subset(df, sigCol == -2)
 nrow(sig)
 cor.test(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
-cor(sig$l2fc_disc,sig$l2fc_repl)
 ```
 
 ### Numbers for paper result section
@@ -735,7 +705,8 @@ df %<>% dplyr::select(gene_name, tx_id, tx_biotype, tx_pvalueStageR, l2fc_disc, 
 	dplyr::mutate_at(6,~paste0(.,"\\\\")) %>%
 	dplyr::select(-(tx_pvalueStageR)) %>%
 	tibble::add_column(.,tool=rep("&DRIMSeq&",nrow(.)),.before=1)
-write.table(df,file=paste0(tableOutDir,"drimFinal.txt"),quote=F,col.names=F,row.names=F)
+# uncomment 
+# write.table(df,file=paste0(tableOutDir,"drimFinal.txt"),quote=F,col.names=F,row.names=F)
 ```
 
 These plots are not included in the paper but nice to have for a quick look.
@@ -756,18 +727,26 @@ genes_to_plot <- DTU::get_gene_info(unique(df_drim$tx_id,df_dex), tx = T)
 # This is an annoying problem: Within DRIMSeq (e.g. when calling counts), sample_ids get changed
 # Probably somewhere in as.data.frame where check.names==T 
 # hyphens become dots (Ctr-1 -> Ctr.1)
-# dirty quick fix:
+# dirty quick fix (not necessary for DEXSeq)
 new_obj <- obj
 new_obj$info <- lapply (obj$info, function (i) {
 		i %<>% dplyr::mutate(sample_id = gsub("-",".",sample_id))
 	    })
-
+new_obj$dge <- lapply(new_obj$dge, function (o) {
+		snames <- gsub("-",".",colnames(o))
+	 	SummarizedExperiment::colData(o) %<>% as.data.frame() %>% 
+			dplyr::mutate(sample_id = snames, sample_id1 = snames,
+				      sample_id2 = snames) %>%
+		        DataFrame()
+		colnames(o) <- snames
+		return(o)
+	    })
 plots <- DTU::plot_genes_cohort(genes_toplot = genes_to_plot ,
-				 tool = "drim",
+				 tool = "dex",
 				 only_nom_sig = F,
 				 conditions = c("CT","PD"),
 				 out = plotOutDir,
-				 obj = new_obj,
+				 obj = obj,
 				 cohort = "discovery",
 				 selected_samples = NULL,
 				 want_jitter = F)
@@ -812,7 +791,8 @@ df %<>% dplyr::select(Tool, gene_name, tx_id, tx_biotype, l2fc, log2FoldChange) 
 	dplyr::mutate_at(5:6, ~myFormat(.)) %>% 
 	dplyr::mutate_at(2:6, ~paste0("&",.)) %>%
 	dplyr::mutate_at(6, ~paste0(.,"\\\\")) 
-write.table(df,file=paste0(tableOutDir,"DGEDTU.txt"),quote=F,col.names=F,row.names=F)
+# uncomment
+# write.table(df,file=paste0(tableOutDir,"DGEDTU.txt"),quote=F,col.names=F,row.names=F)
 ```
 
 ### DGE and DTU intersection (Fig. 1) 
@@ -928,7 +908,7 @@ bp <- string_db$get_enrichment(hits$STRING_id, category = "Process",
 	tbl_df 
 bp %>% kable(.) %>%
   kable_styling() %>%
-  scroll_box(width = "500px", height = "200px")
+  scroll_box(width = "800px", height = "200px")
 
 cc <- string_db$get_enrichment(hits$STRING_id,
 			       category = "Component",
@@ -937,7 +917,7 @@ cc <- string_db$get_enrichment(hits$STRING_id,
 	tbl_df 
 cc %>% kable(.) %>%
   kable_styling() %>%
-  scroll_box(width = "500px", height = "200px")
+  scroll_box(width = "800px", height = "200px")
 
 mf <- string_db$get_enrichment(hits$STRING_id,
 			       category = "Function", 
@@ -946,7 +926,7 @@ mf <- string_db$get_enrichment(hits$STRING_id,
 	tbl_df 
 mf %>% kable(.) %>%
   kable_styling() %>%
-  scroll_box(width = "500px", height = "200px")
+  scroll_box(width = "800px", height = "200px")
 ```
 
 Cluster the pathways with PathCluster. This takes a lot of time....
@@ -992,7 +972,9 @@ names(objs) <- categories
 # Cluster pathways
 clusters <- lapply(seq(1,length(objs)), function(i) {
  run_pathway_vis(input = objs[[i]],
- plotTitle = categories[[i]], subsetsize = 50)
+ plotTitle = categories[[i]],
+ outPDF = paste0(plotOutDir, "treemap_", names(objs)[i], ".pdf"),
+ subsetsize = 50)
  })
 saveRDS(clusters, paste0(plotOutDir, "./clusters_stringdb.rds"))
 clusters <- readRDS(paste0(plotOutDir,"./clusters_stringdb.rds"))
@@ -1024,7 +1006,7 @@ Fitted values extracted from DEXSeq, as DEXSeq identified DTU gene ZNF189
 # Define genes
 lab_genes <- c("ZNF189")
 # Get transcript info from ensembl
-genesToPlot <- get_gene_info(subset(obj$main_df$discovery$drim, gene_name %in% lab_genes)$tx_id, tx = T)
+genesToPlot <- DTU::get_gene_info(subset(obj$main_df$discovery$drim, gene_name %in% lab_genes)$tx_id, tx = T)
 # Generate plots 
 plots1 <- DTU::plot_genes_cohort(obj = obj, cohort = "discovery", genes_toplot = genesToPlot, tool = "dex",
 			    plot = F, only_nom_sig=F, want_jitter = F,
@@ -1182,9 +1164,10 @@ repl <-  dplyr::bind_rows("DRIMSeq" = repl_drim, "DEXSeq" = repl_dex, .id = "too
 
 disc %>% kable(.) %>%
   kable_styling() %>%
-  scroll_box(width = "500px", height = "200px")
+  scroll_box(width = "800px", height = "200px")
 
 S2 <- dplyr::bind_rows("discovery" = disc, "replication" = repl, .id = "cohort")
-write.table(S2, paste0(tableOutDir, "Add2S2.txt"), quote = F, row.names = F, sep = "\t")
+# uncomment
+# write.table(S2, paste0(tableOutDir, "Add2S2.txt"), quote = F, row.names = F, sep = "\t")
 ```
 

@@ -11,6 +11,7 @@ output:
     highlight: tango  # specifies the syntax highlighting style
     fig_width: 6
     fig_height: 7
+    self_contained: true
 ---
 
 
@@ -153,6 +154,7 @@ gene_info <- DTU::get_gene_info(DRIMSeq::counts(obj$Ds_unfilt$Ds_drim_unfilt$dis
 # discovery cohort 
 CPMs <- DRIMSeq::counts(obj$Ds_unfilt$Ds_drim_unfilt$discovery) %>%
 	dplyr::rename(tx_id = feature_id) %>% 
+# comment next line to get median expression on count scale (median(CPMs[,-c(1,2)] %>% rowMeans()))
 	dplyr::mutate_at(grep("\\.", colnames(.)), ~. / sum(.) * 1000000)
 
 CPMs_filtered <- CPMs %>% dplyr::filter(tx_id %in% DRIMSeq::counts(obj$Ds$Ds_drim$discovery)$feature_id)
@@ -173,6 +175,11 @@ biotypeCount <- df %>% dplyr::group_by(Filter) %>%
 	mutate(sum=sum(n),frac = n / sum(n)) 
 ntxInfo  <- df %>% dplyr::group_by(Filter) %>%
 	dplyr::distinct(gene_id,.keep_all = T) 	
+
+
+dplyr::group_by(df,Filter) %>% dplyr::summarise(median(rowMeans),sd(rowMeans))
+
+
 
 p1 <- ggplot(df, aes(x = log10(rowMeans), col = Filter)) +
 	geom_histogram(aes(y = ..density.., fill = Filter), alpha = 0.4, bins = 100) +
@@ -210,7 +217,7 @@ grid.arrange(p1, p2, p3)
 dev.off()
 ```
 
-## Diagnostic plots (Fig.S1)  
+### Diagnostic plots (Fig.S1)  
 
 Volcano and MA plots  
 
@@ -394,6 +401,23 @@ scale_color_manual(values=c("Neither p-value \nsurvived stageR correction"="grey
 
 ```
 
+```{r AgreementCor}
+# Correlations mentioned in the manuscript
+# DTU events of either tool
+ids <- unique(c(final_disc_drim$tx_id,final_disc_dex$tx_id))
+events <- dplyr::left_join(subset(obj$main_df$discovery$dex,tx_id %in% ids),subset(obj$main_df$discovery$drim,tx_id %in% ids),by=c("gene_id","tx_id"))
+cor.test(events$l2fc.x,events$l2fc.y)
+# How many of the DTU events identified by one method are nom. sig in the alternative method
+# Number of DEXSeq DTU events
+a <- nrow(final_disc_dex)
+b <- nrow(subset(obj$main_df$discovery$drim, tx_id %in% final_disc_dex$tx_id & nom_pval < 0.05))
+(b / a) * 100
+# Number of DRIMSeq DTU events
+a <- nrow(final_disc_drim)
+b <- nrow(subset(obj$main_df$discovery$dex, tx_id %in% final_disc_drim$tx_id & nom_pval < 0.05))
+(b / a) * 100
+```
+
 ```{r Figure4}
 # dfs that contain all info 
 drim <- obj$main_df$discovery$drim 
@@ -533,6 +557,9 @@ print("percentage of tx agreeing on direction disc. cohort and repl. cohort")
 print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in both cohorts"))/nrow(subset(df,sigColLabel=="Sig. in both cohorts")))))
 print("percentage of tx agreeing on direction repl. cohort not disc. cohort")
 print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Sig. in the replication cohort only"))/nrow(subset(df,sigColLabel=="Sig. in the replication cohort only")))))
+print("percentage of tx agreeing on direction not repl. cohort and not disc. cohort")
+print(formatC(100*(nrow(subset(df,agreelfc==1 & sigColLabel=="Not sig. in either cohort"))/nrow(subset(df,sigColLabel== "Not sig. in either cohort")))))
+
 
 #effect size agreement plot
 esa_plot <- ggplot(data=df,aes(x=l2fc_repl,y=l2fc_disc)) +   
@@ -593,7 +620,7 @@ t.test(as.numeric(sig$agreelfc)-1,as.numeric(nonSig$agreelfc)-1)
 sig<- subset(df, sigCol == 0)
 nrow(sig)
 cor(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
-cor.test(sig$l2fc_disc,sig$l2fc_repl)
+cor.test(sign(sig$l2fc_disc),sign(sig$l2fc_repl))
 
 #sig in Repl
 sig <- subset(df, sigCol == -2)
@@ -765,7 +792,9 @@ For this we use the result dataframe of the differential gene expression analysi
 
 ```{r DGEINT}
 DGE <- subset(obj$dge_results$discovery, padj < 0.05)
-
+a <- length(unique(c(final_disc_drim$gene_id,final_disc_dex$gene_id)))
+b <- sum(unique(c(final_disc_drim$gene_id,final_disc_dex$gene_id)) %in% DGE$gene_id)	
+(b / a) * 100
 #for each tool, subset the df to contain only dtu events of genes which appear in the DGE df
 drimReprod <- final_disc_drim %>% dplyr::filter(gene_id %in% DGE$gene_id)
 dexReprod <- final_disc_dex %>% dplyr::filter(gene_id %in% DGE$gene_id)

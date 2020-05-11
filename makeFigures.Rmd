@@ -742,11 +742,11 @@ new_obj$dge <- lapply(new_obj$dge, function (o) {
 		return(o)
 	    })
 plots <- DTU::plot_genes_cohort(genes_toplot = genes_to_plot ,
-				 tool = "dex",
+				 tool = "drim",
 				 only_nom_sig = F,
 				 conditions = c("CT","PD"),
 				 out = plotOutDir,
-				 obj = obj,
+				 obj = new_obj,
 				 cohort = "discovery",
 				 selected_samples = NULL,
 				 want_jitter = F)

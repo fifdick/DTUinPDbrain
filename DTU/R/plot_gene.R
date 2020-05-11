@@ -143,10 +143,11 @@ plot_gene <- function(all_vals, p_gene_id, genes_toplot, out = "./", plot = T, t
  set.seed(my.seed)
  tool <- ifelse(tool == "dex", "DEXSeq", "DRIMSeq")
  count_plot <- make_plot(df, tool = tool, want_jitter = want_jitter)
- grDevices::pdf(paste0(out, gene_name, "_", my.seed, "_counts_", tool, ".pdf"))
- grDevices::dev.off()
  if (plot == T) {
   print(count_plot)
+  grDevices::pdf(paste0(out, gene_name, "_", my.seed, "_counts_", tool, ".pdf"))
+  print(count_plot)
+  grDevices::dev.off()
  }       
  result <- list(data = df, plot = count_plot, debug = debug_d)
  return(result)   

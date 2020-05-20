@@ -92,7 +92,9 @@ info <- DTU::create_sample_info(pheno = metaDataFile, cohort_names = c("discover
 obj$dge <- dge_obj
 obj$dge_results <- dge_results
 obj$info <- info
-
+# assign often used df to easier variable name
+df_disc <- obj$main_df$discovery
+df_repl  <- obj$main_df$replication 
 # discovery cohort: define df with significant (after correction) (DTU events) 
 final_disc_dex <- df_disc$dex %>% dplyr::filter(!(is.na(tx_pvalueStageR))) %>%
 	dplyr::select(tx_id, gene_name, gene_id, l2fc, tx_pvalueStageR, nom_pval, tx_biotype) %>%
@@ -188,13 +190,13 @@ p1 <- ggplot(df, aes(x = log10(rowMeans), col = Filter)) +
 	theme_bw() +
 	scale_color_manual(values = c("deepskyblue3", "darkblue"))+
 	scale_fill_manual(values = c("deepskyblue3", "darkblue"))+	
-	labs(title = "a")
+	labs(title = "A")
 p2 <- ggplot(ntxInfo, aes(x = Filter, y = log10(ntx))) +
 	geom_violin(scale = "count", aes(fill = Filter)) +
 	geom_jitter(width = 0.1, size = 0.3, alpha = 0.01) +
 	theme_bw() +
 	scale_y_continuous(name = "log10(# transcripts per gene)") + 
-	labs(x = "", title = "b") +
+	labs(x = "", title = "B") +
         scale_color_manual(values = c("deepskyblue3", "darkblue"))+
 	scale_fill_manual(values = c("deepskyblue3", "darkblue"))	
 p3 <- ggplot(subset(biotypeCount, frac >= 0.001), aes(x = as.factor(tx_biotype), y = frac, fill = Filter)) +
@@ -203,7 +205,7 @@ p3 <- ggplot(subset(biotypeCount, frac >= 0.001), aes(x = as.factor(tx_biotype),
 	facet_wrap(.~Filter) +
 	theme_bw() +
 	theme(axis.text.x = element_text(angle = -90)) +
-	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency", title = "c") +
+	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency", title = "C") +
         scale_color_manual(values = c("deepskyblue3", "darkblue"))+
 	scale_fill_manual(values = c("deepskyblue3", "darkblue"))+	
 theme(panel.spacing = unit(1, "lines")) +
@@ -212,7 +214,8 @@ theme(strip.text = element_text(color = "white", face = "bold"))
 
 
 grid.arrange(p1, p2, p3)
-svg(paste0(plotOutDir, "Figure3.svg"), width = 7, height = 9)
+#svg(paste0(plotOutDir, "Figure3.svg"), width = 7, height = 9)
+tiff(paste0(plotOutDir, "Fig3.tiff"), width = 7, heigh = 8.75, units = "in", res = 300, compression = "lzw") 
 grid.arrange(p1, p2, p3)
 dev.off()
 ```
@@ -299,19 +302,21 @@ df %<>% dplyr::mutate(outlier=ifelse(abs(l2fc)>3,TRUE,FALSE),l2fc=ifelse(abs(l2f
 ggplot(df, aes(x=log10(meanExpr),y=l2fc,col=as.factor(sig))) +
 	geom_point(alpha=0.3,aes(shape=outlier)) +
 	facet_wrap(~tool) + 
-	scale_color_manual(labels=c("TRUE"="p-value < 0.05","FALSE" = "not signif."),values=c("TRUE"="red","FALSE"="grey")) +
-	labs(x="log10(mean expression)",y="Effect size",col="Significance",tag=title) +
+	scale_color_manual(labels=c("TRUE"="< 0.05","FALSE" = ">= 0.05"),values=c("TRUE"="red","FALSE"="grey")) +
+	labs(x="log10(mean expression)",y="Effect size",col="Nom. p-value",tag=title) +
 		theme_bw() +
 theme(plot.title = element_text(hjust = 0.5)) +
 theme(strip.background=element_rect(fill="black")) +
 theme(strip.text= element_text(color="white",face="bold"))  +
-theme(legend.position="bottom",plot.tag = element_text(margin = margin(t=0))) +
-theme(plot.margin=unit(c(0,0,0,0),"mm"))
+theme(legend.position="bottom",plot.tag = element_text(margin = margin(t=0)),
+      legend.text=element_text(size = 8)) +
+theme(plot.margin=unit(c(0,0,0,0),"mm")) +
+guides(shape = FALSE) 
 	
 }
 
 plot_pvalDist<-function(df,tag) {
-df %>% dplyr::mutate(ntxLabel=paste0(ntx," transcripts/gene")) %>%
+df %>% dplyr::mutate(ntxLabel=paste0(ntx," tx/gene")) %>%
 ggplot(.,aes(x=qvalue,y=..density..)) +
 geom_histogram(aes(fill=tool),col="black") +
 geom_density() +
@@ -324,13 +329,13 @@ theme(strip.text= element_text(color="white",face="bold")) 	+
 labs(tag=tag,fill="Tool",x="gene-level p-value",y="density") 
 }
 
-p1 <- plotVolcano(dfTxLevel,title="a")
-p2 <- my_plotMA(dfTxLevel,title="b")	
-p3 <- plot_pvalDist(dfGeneLevel,tag="c")
+p1 <- plotVolcano(dfTxLevel,title="A")
+p2 <- my_plotMA(dfTxLevel,title="B")	
+p3 <- plot_pvalDist(dfGeneLevel,tag="C")
 
 (p1/p2 + plot_layout(heights=c(1,2))) | p3 
-svg(paste0(plotOutDir,"S1.svg"),width=13,height=10)
-(p1/p2 + plot_layout(heights=c(1,2))) | p3 
+tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 6.693647, height = 7.773294, unit = "in", res = 300, compression = "lzw" )
+((p1/p2 + plot_layout(heights=c(.5,.5))) | p3 ) + plot_layout(heights = c(.5,1)) 
 dev.off()
 ```
 

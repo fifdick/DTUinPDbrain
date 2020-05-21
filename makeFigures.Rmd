@@ -333,8 +333,8 @@ p1 <- plotVolcano(dfTxLevel,title="A")
 p2 <- my_plotMA(dfTxLevel,title="B")	
 p3 <- plot_pvalDist(dfGeneLevel,tag="C")
 
-(p1/p2 + plot_layout(heights=c(1,2))) | p3 
-tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 6.693647, height = 7.773294, unit = "in", res = 300, compression = "lzw" )
+p <- (p1/p2 + plot_layout(heights=c(1,2))) | p3 
+tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 10, height = 13, unit = "in", res = 300, compression = "lzw" )
 ((p1/p2 + plot_layout(heights=c(.5,.5))) | p3 ) + plot_layout(heights = c(.5,1)) 
 dev.off()
 ```
@@ -428,13 +428,13 @@ b <- nrow(subset(obj$main_df$discovery$dex, tx_id %in% final_disc_drim$tx_id & n
 drim <- obj$main_df$discovery$drim 
 dex <- obj$main_df$discovery$dex
 dfList <- make_df(drim,dex)
-p1 <- makeplot(dfList[[1]], tag = "a", legend = "none")
-p2 <- makeplot(dfList[[2]], tag = "b", legend = "bottom")
-p3 <- makeplot(dfList[[3]], tag = "c", legend = "none")
-p4 <- makeplot(dfList[[4]], tag = "d", legend = "none")
+p1 <- makeplot(dfList[[1]], tag = "A", legend = "none")
+p2 <- makeplot(dfList[[2]], tag = "B", legend = "bottom")
+p3 <- makeplot(dfList[[3]], tag = "C", legend = "none")
+p4 <- makeplot(dfList[[4]], tag = "D", legend = "none")
 combined <- (p1 | p2) / (p3 | p4) #& theme(legend.position = "bottom")
 combined
-svg(paste0(plotOutDir,"Figure4.svg"),width=10,height=10)
+tiff(paste0(plotOutDir,"Fig4.tiff"),width=10,height=10,unit = "in", res = 300)
 combined / guide_area() + plot_layout(guides = "collect",widths=c(3,1))
 dev.off() 
 ```
@@ -446,13 +446,13 @@ For the replication cohort(Fig. S2):
 drim <- obj$main_df$replication$drim 
 dex <- obj$main_df$replication$dex
 dfList <- make_df(drim,dex)
-p1 <- makeplot(dfList[[1]], tag = "a", legend = "none")
-p2 <- makeplot(dfList[[2]], tag = "b", legend = "bottom")
-p3 <- makeplot(dfList[[3]], tag = "c", legend = "none")
-p4 <- makeplot(dfList[[4]],tag = "d", legend = "none")
+p1 <- makeplot(dfList[[1]], tag = "A", legend = "none")
+p2 <- makeplot(dfList[[2]], tag = "B", legend = "bottom")
+p3 <- makeplot(dfList[[3]], tag = "C", legend = "none")
+p4 <- makeplot(dfList[[4]],tag = "D", legend = "none")
 combined <- (p1 | p2) / (p3 | p4)
 combined
-svg(paste0(plotOutDir,"S2.svg"), width = 10, height = 10)
+tiff(paste0(plotOutDir,"S2Fig2.tiff"), width = 10, height = 10, unit = "in", res = 300)
 combined / guide_area() + plot_layout(guides = "collect", widths = c(3,1))
 dev.off() 
 ```
@@ -511,7 +511,7 @@ df <- dfDex %>% dplyr::bind_rows("DEXSeq" = ., "DRIMSeq" = dfDrim, .id = "Tool")
 nrow(dfDrim)
 cor(dfDrim$l2fc_repl, dfDrim$l2fc_disc)
 cor.test(sign(dfDrim$l2fc_repl), sign(dfDrim$l2fc_disc))
-p <- agreementPlot(df,tag="b",legend="right")
+p <- agreementPlot(df,tag="B",legend="right")
 print("percent agreement dex")
 print(formatC(100*(nrow(subset(dfDex, sign(l2fc_disc) == sign(l2fc_repl))) / nrow(dfDex))))
 print("percent agreement drim")
@@ -557,7 +557,7 @@ facet_wrap(~sigColLabel) + scale_fill_viridis_c() +
 coord_fixed() +
 scale_color_gradient(low="red",high="grey") +
 geom_abline(intercept = 0, slope = 1,lty="dashed",) +	
-labs(title="",x="effect size replication cohort",y="effect size discovery cohort",fill="",col="Adj. p-value (discovery cohort)",tag="a") +
+labs(title="",x="effect size replication cohort",y="effect size discovery cohort",fill="",col="Adj. p-value (discovery cohort)",tag="A") +
  geom_hline(aes(yintercept=0),col="grey") +
 geom_vline(aes(xintercept=0),col="grey") +
 theme_bw() +
@@ -573,7 +573,7 @@ esa_plot <- esa_plot +
 p <- p +
 	stat_cor()
 }
-svg(paste0(plotOutDir,"Figure6.svg"),width=12,height=12)
+tiff(paste0(plotOutDir,"Fig6.tiff"),width=12,height=12, unit = "in", res = 300)
 esa_plot / p + plot_layout(widths=c(1.5,1))
 dev.off()
 ```
@@ -818,7 +818,7 @@ resultPlotBiotype <- ggplot(data = df, aes(x = tx_biotype, fill = Tool)) +
     theme_bw() +
     coord_flip() +
     #theme(axis.text.x = element_text(angle = 45)) +
-	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency (%)", tag = "b", fill = "") +
+	labs(x = "Transcript biotype (Ensembl v75)", y = "Frequency (%)", tag = "B", fill = "") +
        theme(panel.spacing = unit(1, "lines")) +
     theme(strip.background = element_rect(fill = "black"))+
     theme(legend.position = "none")+
@@ -842,8 +842,8 @@ lay<-rbind(c(1,NA,NA,NA),
 	   c(3,3,3,3))
 
 grid.arrange(textGrob("a"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
-svg(paste0(plotOutDir,"Figure1.svg"),width=7,height=9)
-grid.arrange(textGrob("a"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
+tiff(paste0(plotOutDir,"Fig1.tiff"), width = 7, height = 9, res = 300, units = "in")
+grid.arrange(textGrob("A"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
 dev.off()
 ```
 ### Correlation of effect size: DTU, DGE  
@@ -864,7 +864,7 @@ twoTx <- ggplot(subset(dge, n == 2), aes(x = log2FoldChange, y = l2fc, group = g
 	geom_line(lwd = 0.5, col = "grey", alpha = .5) +
 	geom_rug(col=rgb(.5, 0, 0, alpha = .2)) +
 	facet_wrap(~ Tool) +
-	labs(x = "Effect size DGE", col = "Adj. p-value DGE", y = "Effect size DTU", tag = "a") +
+	labs(x = "Effect size DGE", col = "Adj. p-value DGE", y = "Effect size DTU", tag = "A") +
 	theme_bw() +
 	theme(strip.background = element_rect(fill = "black"))+
 	theme(strip.text = element_text(color = "white", face = "bold")) + 
@@ -881,9 +881,9 @@ OneTx <- ggplot(subset(dge, n == 1), aes(x = log2FoldChange, y = l2fc)) +
          theme(strip.background = element_rect(fill = "black"))+
          theme(strip.text = element_text(color = "white", face = "bold")) + 
          theme(legend.position = "bottom") +
-         labs(x = "Effect size DGE", y = "Effect size DTU", col = "Adj. p-value DGE", tag = "b")
+         labs(x = "Effect size DGE", y = "Effect size DTU", col = "Adj. p-value DGE", tag = "B")
 grid.arrange(twoTx,OneTx)       
-svg(paste0(plotOutDir,"Figure5.svg"))
+tiff(paste0(plotOutDir,"Fig5.tiff"), compression = "lzw", res = 300, width =7, height = 8.75, units = "in")
 grid.arrange(twoTx,OneTx)
 dev.off()
 ```
@@ -1074,7 +1074,7 @@ makeLabPlot <-function(df, tool, tag, legend = F) {
 # Make the plot 
 znf <- makeLabPlot(df = df, tool = "DEXSeq", tag = "")    
 znf
-svg(paste0(plotOutDir,"Figure2.svg"))
+tiff(paste0(plotOutDir,"Fig2.tiff"), units = "in", width = 7, height = 8.75, res = 300, compression = "lzw")
 znf
 dev.off()
 ```
@@ -1137,10 +1137,10 @@ venn.drim_g<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",a
           fill = c(alpha("#440154ff",0.3), alpha('#21908dff',0.3)),cat.pos=c(-20,25))
 
 
-((as.ggplot(grobTree(venn.drim_g)) + labs(tag="a")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="b")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="c") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="d")))
+#((as.ggplot(grobTree(venn.drim_g)) + labs(tag="A")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="B")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="C") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="D")))
 
-svg(paste0(plotOutDir,"./S3.svg"),width=9,height=6)
-((as.ggplot(grobTree(venn.drim_g)) + labs(tag="a")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="b")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="c") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="d")))
+tiff(paste0(plotOutDir,"./S2Fig3.tiff"), width=9, height=6, units = "in", res = 300, compression = "lzw")
+((as.ggplot(grobTree(venn.drim_g)) + labs(tag="A")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="B")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="C") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="D")))
 dev.off()
 ```
 

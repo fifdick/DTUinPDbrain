@@ -35,7 +35,7 @@ get_gene_info <- function(id_list, version = "75", g_source = "ensembldb", tx = 
   if (tx == FALSE) {
    genes_gr <- ensembldb::genes(edb, filter = AnnotationFilter::GeneIdFilter(id_list), columns = c("gene_id", "gene_name", "gene_biotype", "entrezid"))
    genes <- as.data.frame(genes_gr)
-   genes <- subset(genes, .data$seqnames %in% c(1:22, "X", "Y", "MT") & startsWith(gene_id, "ENSG"))
+   genes <- subset(genes, seqnames %in% c(1:22, "X", "Y", "MT") & startsWith(gene_id, "ENSG"))
    if (promoters == TRUE) {
     return(promoters(genes_gr, upstream = upBP, downstream = downBP))	
    } else {

@@ -1105,8 +1105,7 @@ n12_g = length(Reduce(intersect, list(unique(finalDTU$gene_id), unique(finalDTU_
 
 # replicated DTU events of DRIMSeq (sig after stageR and nom. sig in replication cohort, as well as
 # agreeing on the direction of effect size (sign)
-finalDTUdex <- obj$main_df$discovery$dex %>% 
-	dplyr::filter(!(is.na(tx_pvalueStageR))) %>% 
+finalDTUdex <- final_disc_dex %>% 
 	dplyr::filter(tx_id %in% (subset(obj$main_df$replication$dex,nom_pval<0.05)$tx_id)) %>% 
 	dplyr::filter(sign(l2fc) == sign(obj$main_df$replication$dex[match(tx_id,obj$main_df$replication$dex$tx_id),"l2fc"]))
 
@@ -1147,6 +1146,79 @@ tiff(paste0(plotOutDir,"./S2Fig3.tiff"), width=9, height=6, units = "in", res = 
 dev.off()
 ```
 
+### Alternative to Venn diagramm: "heatmap"
+
+```{r}
+dplyr::full_join(finalDTU, (finalDTU_noCC %>% 
+			dplyr::select(-toolAdjPval, -gene_pvalueStageR, -rankDex)),
+		  by = c("gene_name", "gene_id", "tx_biotype", "tx_id"),
+		  suffix = c(".cc", ".no_cc")) %>%
+	dplyr::full_join(., 
+		  finalDTUdex,
+		  by = c("gene_name", "gene_id", "tx_biotype", "tx_id")) %>%
+	dplyr::rename(l2fc.cc_dex = l2fc, tx_pvalueStageR.cc_dex = tx_pvalueStageR, nom_pval.cc_dex = nom_pval) %>%
+	dplyr::full_join(., finalDTU_noCCdex, 
+		  by = c("gene_name", "gene_id", "tx_biotype", "tx_id")) %>%
+	dplyr::rename(l2fc.no_cc_dex = l2fc, tx_pvalueStageR.no_cc_dex = tx_pvalueStageR, nom_pval.no_cc_dex = nom_pval) -> allDTU
+
+allDTU %>%
+	dplyr::select(gene_name, tx_id, tx_pvalueStageR.cc, tx_pvalueStageR.no_cc, tx_pvalueStageR.cc_dex, tx_pvalueStageR.no_cc_dex) %>% 
+	reshape2::melt(.) %>% 
+	dplyr::rename(tx_pvalueStageR = value, model = variable) %>%
+	dplyr::mutate(model = gsub("tx_pvalueStageR.", "", model)) -> tx_p
+
+allDTU %>%
+	dplyr::select(gene_name, tx_id, l2fc.cc, l2fc.no_cc, l2fc.cc_dex, l2fc.no_cc_dex) %>% 
+	reshape2::melt(.) %>% 
+	dplyr::rename(l2fc = value, model = variable) %>%
+	dplyr::mutate(model = gsub("l2fc.", "", model)) -> l2fc
+
+allDTU %>%
+	dplyr::select(gene_name, tx_id, nom_pval.cc, nom_pval.no_cc, nom_pval.cc_dex, nom_pval.no_cc_dex) %>% 
+	reshape2::melt(.) %>% 
+	dplyr::rename(nom_pval = value, model = variable) %>%
+	dplyr::mutate(model = gsub("nom_pval.", "", model)) -> nom_pval
+
+allDTU_long <- dplyr::left_join(tx_p, l2fc, by = c("gene_name", "tx_id", "model")) %>%
+		dplyr::left_join(., nom_pval, by = c("gene_name", "tx_id", "model"))
+
+
+#aheatmap(as.matrix(allDTU %>% dplyr::select(tx_pvalueStageR.cc, tx_pvalueStageR.no_cc)%>%
+#		  dplyr::mutate(tx_pvalueStageR.cc = ifelse(is.na(tx_pvalueStageR.cc), 1, tx_pvalueStageR.cc),
+#				tx_pvalueStageR.no_cc = ifelse(is.na(tx_pvalueStageR.cc), 1, tx_pvalueStageR.cc))))
+
+allDTU_long %>% 
+	dplyr::mutate(tx_pvalueStageR = case_when(
+						  is.na(tx_pvalueStageR) ~ "1",
+						  TRUE ~ "< 0.05")) %>%
+	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = as.factor(tx_pvalueStageR))) +
+		geom_tile() +
+		scale_fill_viridis_d() +
+		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> A
+# Find real nom pval and l2fc for NAs
+allDTU_long %>% 
+	dplyr::mutate(nom_pval = case_when(is.na(nom_pval) ~ 1,
+						  TRUE ~ nom_pval)) %>%
+	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = -log10(nom_pval))) +
+		geom_tile() +
+		scale_fill_viridis_c() +
+		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> B
+allDTU_long %>% 
+	dplyr::mutate(l2fc = case_when(is.na(l2fc) ~ 0,
+						  TRUE ~ l2fc)) %>%
+	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = l2fc)) +
+		geom_tile() +
+		scale_fill_viridis_c(option = "C") +
+		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> C
+
+	A + B + C
+
+
+
+```
+
+
+
 ### Supplement tables for all dtu genes and events
 
 ```{r}
@@ -1176,18 +1248,19 @@ disc %>% kable(.) %>%
 
 S2 <- dplyr::bind_rows("discovery" = disc, "replication" = repl, .id = "cohort")
 # uncomment
-# write.table(S2, paste0(tableOutDir, "Add2S2.txt"), quote = F, row.names = F, sep = "\t")
+# write.table(S2, paste0(tableOutDir, "S1T2.txt"), quote = F, row.names = F, sep = "\t")
 ```
 
 ### Supplement table for raw counts
 
 ```{r}
 tab  <- DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$discovery) %>%
-		dplyr::inner_join(., DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$replication),
+		dplyr::full_join(., DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$replication),
 				  by = c("feature_id", "gene_id")) %>%
 		dplyr::rename(tx_id = feature_id)
 # NAs?
 colSums(is.na(tab))
+head(tab[which(is.na(tab[,c(3,23)])), ])
 
 # Add gene symbol and biotype
 tab  %<>% dplyr::right_join((DTU::get_gene_info(id_list = tab$tx_id, tx = T) %>%
@@ -1204,11 +1277,12 @@ tab %<>% dplyr::mutate(pres_after_filt_disc = ifelse(tx_id %in% discovery_tx, "y
 		       pres_after_filt_repl = ifelse(tx_id %in% replication_tx, "yes", "filtered out")) %>%
 	 dplyr::select(gene_name, gene_id, tx_id, tx_biotype, pres_after_filt_disc, pres_after_filt_repl, everything())
 
-write.table(tab, paste0(tableOutDir, "S1S3.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
+# write.table(tab, paste0(tableOutDir, "S1S3.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 
 #Add metadata to S1
 tab  <- gdata::combine(obj$info$discovery, obj$info$replication, names = c("discovery", "replicaion")) %>%
 	dplyr::mutate(condition = ifelse(condition == 1, "Case", "Control"))
-write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
+# write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 ```
+
 

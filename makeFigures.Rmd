@@ -46,7 +46,7 @@ the qPCR results, the DGE results, and all the rds objects that were produced by
 ```{r load, echo=T, message=F, warning=F}
 # Set output directories
 plotOutDir <- "./results/"
-tableOutDir  <- "./results/"
+tableOutDir  <- "./results/tables/"
 
 # meta data file and qPCR result file
 metaDataFile <- "./metaData/phenoData.csv"
@@ -88,7 +88,10 @@ Generating one main dataframe for use of downstream analysis.
 
 ```{r createMainDf}
 # Add sample info and DGE results to the main result object
-info <- DTU::create_sample_info(pheno = metaDataFile, cohort_names = c("discovery","replication"), conditions=c("Control","Case")) 
+info <- DTU::create_sample_info(pheno = metaDataFile,
+				cohort_names = c("discovery","replication"),
+				conditions=c("Control","Case"),
+				batch_vars = c("age_years", "Microglia_Genes", "Oligo_Genes", "sex")) 
 obj$dge <- dge_obj
 obj$dge_results <- dge_results
 obj$info <- info
@@ -1174,5 +1177,38 @@ disc %>% kable(.) %>%
 S2 <- dplyr::bind_rows("discovery" = disc, "replication" = repl, .id = "cohort")
 # uncomment
 # write.table(S2, paste0(tableOutDir, "Add2S2.txt"), quote = F, row.names = F, sep = "\t")
+```
+
+### Supplement table for raw counts
+
+```{r}
+tab  <- DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$discovery) %>%
+		dplyr::inner_join(., DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$replication),
+				  by = c("feature_id", "gene_id")) %>%
+		dplyr::rename(tx_id = feature_id)
+# NAs?
+colSums(is.na(tab))
+
+# Add gene symbol and biotype
+tab  %<>% dplyr::right_join((DTU::get_gene_info(id_list = tab$tx_id, tx = T) %>%
+			   				dplyr::select(gene_name, gene_id, tx_id, tx_biotype)),
+				.,
+			   	by = c("gene_id", "tx_id"))
+
+# Add info about pre-filtering
+
+discovery_tx  <- DRIMSeq::counts(obj$Ds$Ds_drim$discovery)$feature_id
+replication_tx  <- DRIMSeq::counts(obj$Ds$Ds_drim$replication)$feature_id
+
+tab %<>% dplyr::mutate(pres_after_filt_disc = ifelse(tx_id %in% discovery_tx, "yes", "filtered out"),
+		       pres_after_filt_repl = ifelse(tx_id %in% replication_tx, "yes", "filtered out")) %>%
+	 dplyr::select(gene_name, gene_id, tx_id, tx_biotype, pres_after_filt_disc, pres_after_filt_repl, everything())
+
+write.table(tab, paste0(tableOutDir, "S1S3.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
+
+#Add metadata to S1
+tab  <- gdata::combine(obj$info$discovery, obj$info$replication, names = c("discovery", "replicaion")) %>%
+	dplyr::mutate(condition = ifelse(condition == 1, "Case", "Control"))
+write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 ```
 

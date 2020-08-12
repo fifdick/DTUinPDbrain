@@ -75,6 +75,8 @@ obj <- readRDS(paste0("./results/rds/obj",timestamp,".rds"))
 # (Didnt supply the whole object, to prevent making the git repo too big)
 # (i.e. cosen covariates where (rin,sex,age_years) without Microglia_Genes, Oligi_Genes.
 main_df_no_cc <- readRDS("./results/rds/noCC_main_df.rds")
+rownames(main_df_no_cc$discovery$drim)  <- main_df_no_cc$discovery$drim$tx_id
+rownames(main_df_no_cc$discovery$dex)  <- main_df_no_cc$discovery$dex$tx_id
 ```
 
 ## Result object and dataframe  
@@ -95,6 +97,10 @@ info <- DTU::create_sample_info(pheno = metaDataFile,
 obj$dge <- dge_obj
 obj$dge_results <- dge_results
 obj$info <- info
+# set rownames (only needed once)
+rownames(obj$main_df$discovery$drim) <- obj$main_df$discovery$drim$tx_id
+rownames(obj$main_df$discovery$dex) <- obj$main_df$discovery$dex$tx_id
+
 # assign often used df to easier variable name
 df_disc <- obj$main_df$discovery
 df_repl  <- obj$main_df$replication 
@@ -1180,41 +1186,69 @@ allDTU %>%
 	dplyr::mutate(model = gsub("nom_pval.", "", model)) -> nom_pval
 
 allDTU_long <- dplyr::left_join(tx_p, l2fc, by = c("gene_name", "tx_id", "model")) %>%
-		dplyr::left_join(., nom_pval, by = c("gene_name", "tx_id", "model"))
+		dplyr::left_join(., nom_pval, by = c("gene_name", "tx_id", "model")) %>%
+		dplyr::mutate(tool = ifelse(grepl("dex", model), "DEXSeq", " DRIMSeq")) %>%
+		dplyr::mutate(model_edt = ifelse(grepl("no_cc", model), "w/o MGPs", "incl. MGPs")) 
 
 
 #aheatmap(as.matrix(allDTU %>% dplyr::select(tx_pvalueStageR.cc, tx_pvalueStageR.no_cc)%>%
 #		  dplyr::mutate(tx_pvalueStageR.cc = ifelse(is.na(tx_pvalueStageR.cc), 1, tx_pvalueStageR.cc),
 #				tx_pvalueStageR.no_cc = ifelse(is.na(tx_pvalueStageR.cc), 1, tx_pvalueStageR.cc))))
-
-allDTU_long %>% 
-	dplyr::mutate(tx_pvalueStageR = case_when(
-						  is.na(tx_pvalueStageR) ~ "1",
-						  TRUE ~ "< 0.05")) %>%
-	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = as.factor(tx_pvalueStageR))) +
-		geom_tile() +
-		scale_fill_viridis_d() +
-		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> A
+labels = sapply(seq(1, nrow(allDTU_long)), function(i) {
+			bquote(bolditalic((allDTU_long$gene_name[i])))
+	})
+names(labels) = allDTU_long$tx_id
+allDTU_long %>%
+	ggplot(., aes(y = paste0(gene_name, " - ", tx_id), x = model_edt, fill = tx_pvalueStageR)) +
+		geom_tile(col = "white") +
+		scale_fill_viridis_c(na.value = "white") +
+		theme_linedraw() +
+		facet_wrap(~ tool , scales = "free_x") +
+		theme(legend.position = "bottom") +
+		theme(axis.text.y = element_text(face = "bold")) +
+		theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+	#	scale_y_discrete(labels = labels) +
+		labs(y = "", tag = "A", x = "Model", fill = "StageR transcript \n p-value") -> A
 # Find real nom pval and l2fc for NAs
 allDTU_long %>% 
-	dplyr::mutate(nom_pval = case_when(is.na(nom_pval) ~ 1,
-						  TRUE ~ nom_pval)) %>%
-	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = -log10(nom_pval))) +
-		geom_tile() +
+	dplyr::mutate(nom_pval = case_when(
+				(model == "cc" & is.na(nom_pval)) ~ obj$main_df$discovery$drim[tx_id, "nom_pval"],
+				(model == "no_cc" & is.na(nom_pval)) ~ main_df_no_cc$discovery$drim[tx_id, "nom_pval"],
+				(model == "cc_dex" & is.na(nom_pval)) ~ obj$main_df$discovery$dex[tx_id, "nom_pval"],
+				(model == "no_cc_dex" & is.na(nom_pval))~ main_df_no_cc$discovery$dex[tx_id, "nom_pval"],
+				TRUE ~ nom_pval)) %>% 
+	ggplot(., aes(y = paste0(gene_name, " - ", tx_id), x = model_edt, fill = -log10(nom_pval))) +
+		geom_tile(col = "white") +
 		scale_fill_viridis_c() +
-		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> B
+		scale_y_discrete(position = "right") +
+		facet_wrap(~ tool, scales = "free_x") +
+		theme_linedraw() +
+		theme(legend.position = "bottom") +
+		theme(axis.title.y = element_blank(),
+		      axis.text.y = element_blank(),
+		      axis.ticks.y = element_blank()) +
+		theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+		labs(tag = "C", y = "", x = "Model", fill = "Nom. sig\n (-log10)") -> B
+
 allDTU_long %>% 
-	dplyr::mutate(l2fc = case_when(is.na(l2fc) ~ 0,
-						  TRUE ~ l2fc)) %>%
-	ggplot(., aes(y = paste0(gene_name, " ", tx_id), x = model, fill = l2fc)) +
-		geom_tile() +
-		scale_fill_viridis_c(option = "C") +
-		scale_x_discrete(limits = c("cc", "no_cc", "cc_dex", "no_cc_dex")) -> C
+	ggplot(., aes(y = paste0(gene_name, " - ", tx_id), x = model_edt, fill = l2fc)) +
+		geom_tile(col = "white") +
+		scale_fill_viridis_c(option = "C", na.value = "white") +
+		theme_linedraw() + 
+		facet_wrap(~ tool, scales = "free_x") +
+		theme(legend.position = "bottom") +
+		theme(axis.title.y = element_blank(),
+		      axis.text.y = element_blank(),
+		      axis.ticks.y = element_blank()) +
+	#	scale_y_discrete(limits = paste0(gene_name, " - ", tx_id)) +
+		theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+		labs(tag = "B", y = "", x = "Model", fill = "L2fc") -> C
 
-	A + B + C
+tiff(paste0(plotOutDir,"./S2Fig4.tiff"), width=9, height=6, units = "in", res = 300, compression = "lzw")
+A + C + B
+dev.off()
 
-
-
+A + C + B
 ```
 
 

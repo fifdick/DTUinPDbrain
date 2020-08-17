@@ -895,7 +895,7 @@ dev.off()
 ### Enrichment test for overrepresentation of DTU events in tx biotype categories
 
 biotype_enr <-  function(biotype_df, tool) {
- stats <- lapply(unique(biotype_df$tx_biotype), function(type) {	   
+ stats <- lapply(na.omit(unique(biotype_df$tx_biotype)), function(type) {	   
    	 print(type)
 	 biotype_df %>% dplyr::filter(variable == tool,
 			      tx_biotype == type) %>%
@@ -911,16 +911,26 @@ biotype_enr <-  function(biotype_df, tool) {
 	 replace(is.na(.), 0) 
 	 print(tab)
 	 # chisq.test(tab)
-	 return(data.frame("tx_biotype" = type, "p" = fisher.test(tab)$p, "or" = fisher.test(tab)$estimate))
+	 return(data.frame("tx_biotype" = type, "p" = fisher.test(tab)$p, "or" = round(fisher.test(tab)$estimate, digit = 3)))
  })
- names(stats) <- unique(biotype_df$tx_biotype)
+ names(stats) <- na.omit(unique(biotype_df$tx_biotype))
  return(do.call(rbind, stats))
 }
-drim_fisher_stats <- biotype_enr(biotype_df, "DRIMSeq")
-dex_fisher_stats <- biotype_enr(biotype_df, "DEXSeq")
+drim_fisher_stats <- biotype_enr(biotype_df, "DRIMSeq") %>%
+	dplyr::arrange(p) %>%
+	dplyr::mutate(p = format.pval(p, digits = 1))
+dex_fisher_stats <- biotype_enr(biotype_df, "DEXSeq") %>%
+	dplyr::arrange(p) %>%
+	dplyr::mutate(p = format.pval(p, digits = 1))
 
 drim_fisher_stats %>% dplyr::filter(p < 0.05)
 dex_fisher_stats %>% dplyr::filter(p < 0.05)
+
+write.table(gdata::combine(drim_fisher_stats, dex_fisher_stats, names = c("DRIMSeq", "DEXSeq")), 
+	    file = paste0(tableOutDir, "biotype_enr.txt"),
+	    col.names = F,
+	    row.names = F,
+	    sep = "\t")
 
 ```
 ### Correlation of effect size: DTU, DGE  

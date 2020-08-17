@@ -833,15 +833,52 @@ resultPlotBiotype <- ggplot(data = df, aes(x = tx_biotype, fill = Tool)) +
     theme(legend.position = "none")+
     theme(strip.text = element_text(color = "white", face = "bold")) 
 
+## Alternative to Figure 1B to visualize enrichment of tx biotype as defined by ensembl
+ obj$main_df$discovery$drim %>%               
+	 dplyr::select(tx_pvalueStageR, tx_biotype, tx_id) %>%
+	 dplyr::left_join(., (obj$main_df$discovery$dex %>%
+			  	dplyr::select(tx_pvalueStageR, tx_biotype, tx_id)),
+	 		  by = c("tx_id", "tx_biotype"),
+	 		  suffix = c(".drim", ".dex")) %>%
+	 dplyr::rename("DRIMSeq" = "tx_pvalueStageR.drim", "DEXSeq" = "tx_pvalueStageR.dex") %>%
+	 reshape2::melt(.) %>%  
+	 dplyr::mutate(sig = ifelse(is.na(value), " >= 0.05", "< 0.05")) %>%
+	 dplyr::group_by(variable, tx_biotype, sig) %>%
+	 tally() %>% 
+	 dplyr::mutate(sum_ = sum(n), perc = round(n / sum(n), digit = 3)) %>%
+	 dplyr::ungroup() %>%
+	 dplyr::group_by(variable, sig) %>%
+	 dplyr::add_tally(name = "sigDTUtool") %>%
+	 dplyr::mutate(perc_dtu = n / sigDTUtool) -> biotype_df 
+ ggplot((biotype_df %>% dplyr::filter( sig == "< 0.05")), 
+	aes(x= tx_biotype, fill = variable, y = perc_dtu ,
+	    label = paste0(perc,"% (",n," of ", sum_, ")"))) + 
+    geom_bar(stat="identity") +
+    facet_wrap(~variable) +
+    geom_text(aes(y = 0.4)) +
+    scale_fill_manual(values = c("DEXSeq" = colorFriendly[["blue"]], 
+				 "DRIMSeq" = colorFriendly[["orange"]])) +
+    theme_bw() +
+    coord_flip() +
+   # scale_y_continuous(limits = c(0,700)) +
+    #theme(axis.text.x = element_text(angle = 45)) +
+	labs(x = "Transcript biotype (Ensembl v75)", y = "% of DTU events (identified by resp. tool)", tag = "B", fill = "") +
+       theme(panel.spacing = unit(1, "lines")) +
+    theme(strip.background = element_rect(fill = "black"))+
+    theme(legend.position = "none")+
+    theme(strip.text = element_text(color = "white", face = "bold")) -> resultPlotBiotype 
+
+
+
 drim <- unique(final_disc_drim$gene_id)
 dex <- unique(final_disc_dex$gene_id)
 
 n12=length(Reduce(intersect,list(dex,drim)))
-n13=length(Reduce(intersect,list(dex,DGE$gene_id)))
-n23=length(Reduce(intersect,list(drim,DGE$gene_id)))
+n13=length(Reduce(intersect,list(drim,DGE$gene_id)))
+n23=length(Reduce(intersect,list(dex,DGE$gene_id)))
 n123=length(Reduce(intersect,list(drim,dex,DGE$gene_id)))
 
-venn<-draw.triple.venn(ind=F, cat.fontfamily = "sans", fontfamilyi = "sans", area1 = length(dex), area2 = length(drim), area3 = length(DGE$gene_id), n12 = n12, n13 = n13, n23 = n23, n123 = n123, category = c("DEXSeq", "DRIMSeq", "DGE"), fill = c(colorFriendly["blue"], colorFriendly["orange"], colorFriendly["green"]), ext.text = TRUE, label.col = "white", alpha = .7,cat.dist=c(.1,.1,.1))
+venn<-draw.triple.venn(ind=F, cat.fontfamily = "sans", fontfamily = "sans", area2 = length(dex), area1 = length(drim), area3 = length(DGE$gene_id), n12 = n12, n13 = n13, n23 = n23, n123 = n123, category = c("DRIMSeq", "DEXSeq", "DGE"), fill = c(colorFriendly["orange"], colorFriendly["blue"], colorFriendly["green"]), ext.text = TRUE, label.col = "white", alpha = .7,cat.dist=c(.1,.1,.1))
 lay<-rbind(c(1,NA,NA,NA),
 	   c(NA,2,2,NA), 
 	   c(NA,2,2,NA),
@@ -850,10 +887,41 @@ lay<-rbind(c(1,NA,NA,NA),
 	   c(3,3,3,3),
 	   c(3,3,3,3))
 
-grid.arrange(textGrob("a"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
+grid.arrange(textGrob("A"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
 tiff(paste0(plotOutDir,"Fig1.tiff"), width = 7, height = 9, res = 300, units = "in")
 grid.arrange(textGrob("A"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
 dev.off()
+
+### Enrichment test for overrepresentation of DTU events in tx biotype categories
+
+biotype_enr <-  function(biotype_df, tool) {
+ stats <- lapply(unique(biotype_df$tx_biotype), function(type) {	   
+   	 print(type)
+	 biotype_df %>% dplyr::filter(variable == tool,
+			      tx_biotype == type) %>%
+	      	 dplyr::select(sig, n) -> n_type
+	 print(n_type)
+	 biotype_df %>% dplyr::filter(variable == tool, 
+			      tx_biotype != type) %>%
+	     	 dplyr::summarise(n = sum(n)) -> n_not
+	 tab <- matrix(as.numeric(c(n_type[1,"n"], n_type[2, "n"], n_not[1, "n"], n_not[2, "n"])),
+      	  nrow = 2,
+       	  dimnames = list(c("not_DTU", "DTU"),
+	  c("biotype", "not_that_biotype"))) %>%
+	 replace(is.na(.), 0) 
+	 print(tab)
+	 # chisq.test(tab)
+	 return(data.frame("tx_biotype" = type, "p" = fisher.test(tab)$p, "or" = fisher.test(tab)$estimate))
+ })
+ names(stats) <- unique(biotype_df$tx_biotype)
+ return(do.call(rbind, stats))
+}
+drim_fisher_stats <- biotype_enr(biotype_df, "DRIMSeq")
+dex_fisher_stats <- biotype_enr(biotype_df, "DEXSeq")
+
+drim_fisher_stats %>% dplyr::filter(p < 0.05)
+dex_fisher_stats %>% dplyr::filter(p < 0.05)
+
 ```
 ### Correlation of effect size: DTU, DGE  
 

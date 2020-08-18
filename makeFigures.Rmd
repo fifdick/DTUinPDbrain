@@ -1397,4 +1397,98 @@ tab  <- gdata::combine(obj$info$discovery, obj$info$replication, names = c("disc
 # write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 ```
 
+### Concordance of filtered transcripts
+ 
+How many transcripts were analysed in the discovery cohort, that were filtered out in the replication cohort?
+
+```{r}
+DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
+	dplyr::pull(feature_id) %in% (DRIMSeq::counts(obj$Ds$Ds_drim$replication) %>%
+						dplyr::pull(feature_id)) %>%
+	sum((.))
+ntx_disc <- DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
+	dplyr::pull(feature_id)
+ntx_rep <- DRIMSeq::counts(obj$Ds$Ds_drim$replication) %>% 
+	dplyr::pull(feature_id)
+
+length(ntx_disc)
+length(ntx_rep)
+sum(!(ntx_disc %in% ntx_rep))
+sum(ntx_disc %in% ntx_rep)
+
+sum((final_disc_dexdrim %>%
+     dplyr::pull(tx_id) %>%
+     unique(.)) %in% ntx_rep)
+length(unique(final_disc_dexdrim$tx_id))
+```
+
+Behaviour of lib size in cohorts
+
+```{r}
+readr::read_tsv(file = "./metaData/libSizes.txt",
+		col_names = c("sample_id", "lib_size")) %>%
+dplyr::left_join(obj$info$discovery, ., by = "sample_id") -> info_disc
+readr::read_tsv(file = "./metaData/libSizes.txt",
+		col_names = c("sample_id", "lib_size")) %>%
+dplyr::left_join(obj$info$replication, ., by = "sample_id") -> info_repl
+
+# Correlation of covariates
+gdata::combine(info_disc, info_repl, names = c("discovery", "replication")) %>%
+	dplyr::rename(Library_size = lib_size,
+		      Oligo_MGP = Oligo_Genes,
+		      M_Glia_MGP = Microglia_Genes,
+		      Age = age_years,
+		      RIN = rin,
+		      Condition = condition) %>%
+	dplyr::mutate(Condition = as.numeric(Condition)) -> sample_info
+
+# Correlation of rin with counts of transcripts which were filtered out in the replication cohort
+filtered_out_in_repl <- ntx_disc[!(ntx_disc %in% ntx_rep)]
+tx_in_both <- Reduce(intersect,list(ntx_disc, ntx_rep))
+DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
+	dplyr::filter(feature_id %in% filtered_out_in_repl) %>%
+		melt(.) %>%
+	gdata::combine(., (DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$replication) %>% 
+				dplyr::filter(feature_id %in% filtered_out_in_repl) %>%
+				melt(.)),
+		       names = c("Discovery", "Replication")) %>% 
+	dplyr::rename(cohort = source) %>% 
+	dplyr::mutate(sample_id = gsub("\\.", "-", variable)) %>%
+	dplyr::left_join(., sample_info, by = "sample_id") %>%
+	dplyr::mutate(Condition = ifelse(Condition == 1, "PD", "CT")) %>%
+	dplyr::group_by(feature_id) %>%
+	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value)) %>% 
+	ggplot(., aes(x = 1, y = infl_rin)) +
+		geom_violin() +
+		geom_boxplot(width = .2) +
+		scale_color_viridis_c() +
+		#facet_wrap(~ cohort, scales = "free_x") +
+		theme_linedraw() +
+		labs(title = "Non concordant transcripts", y = "Corr.coeff. RIN and count") -> p1
+DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
+	dplyr::filter(feature_id %in% tx_in_both) %>%
+		melt(.) %>%
+	gdata::combine(., (DRIMSeq::counts(obj$Ds_unfilt$Ds_drim$replication) %>% 
+				dplyr::filter(feature_id %in% tx_in_both) %>%
+				melt(.)),
+		       names = c("Discovery", "Replication")) %>% 
+	dplyr::rename(cohort = source) %>% 
+	dplyr::mutate(sample_id = gsub("\\.", "-", variable)) %>%
+	dplyr::left_join(., sample_info, by = "sample_id") %>%
+	dplyr::mutate(Condition = ifelse(Condition == 1, "PD", "CT")) %>%
+	dplyr::group_by(feature_id) %>%
+	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value)) %>% 
+	ggplot(., aes(x = 1, y = infl_rin)) +
+		geom_violin() +
+		geom_boxplot(width = .2) +
+		scale_color_viridis_c() +
+		#facet_wrap(~ cohort, scales = "free_x") +
+		theme_linedraw() +
+		labs(title = "Concordant transcripts", y = "Corr.coeff. RIN and count") -> p2
+
+
+
+p1 + p2
+```
+
 

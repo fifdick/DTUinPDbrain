@@ -27,6 +27,10 @@ import_counts <- function(salmon_data, info, quant_tool="salmon", scale_method="
    return(txi)
   })
   names(txi_lst) <- names(info)
+  print("DEBUG")
+  a <- apply(txi_lst[[1]]$cts,1, function(tx) {cor(tx, info[[1]]$Oligo_Genes)})
+  print(summary(a))
+
   return(txi_lst)
  } else {
   files_per_cohort <- file.path(salmon_data, info$sample_id, "quant.sf")

@@ -1464,7 +1464,10 @@ DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>%
 		scale_color_viridis_c() +
 		#facet_wrap(~ cohort, scales = "free_x") +
 		theme_linedraw() +
-		labs(title = "Non concordant transcripts", y = "Corr.coeff. RIN and count") -> p1
+		theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+		labs(tag = "B", title = "Non concordant transcripts", y = "Corr.coeff. RIN and TPM") -> p1
 DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
 	dplyr::filter(feature_id %in% tx_in_both) %>%
 		melt(.) %>%
@@ -1484,11 +1487,36 @@ DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>%
 		scale_color_viridis_c() +
 		#facet_wrap(~ cohort, scales = "free_x") +
 		theme_linedraw() +
-		labs(title = "Concordant transcripts", y = "Corr.coeff. RIN and count") -> p2
+		theme(axis.title.x=element_blank(),
+        	      axis.text.x=element_blank(),
+                      axis.ticks.x=element_blank()) +
+		labs(title = "Concordant transcripts", y = "Corr.coeff. RIN and TPM") -> p2
+
+n12=length(Reduce(intersect,list(ntx_disc,ntx_rep)))
+n13=length(Reduce(intersect,list(ntx_disc,final_disc_dexdrim$tx_id)))
+n23=length(Reduce(intersect,list(ntx_rep, final_disc_dexdrim$tx_id)))
+n123=length(Reduce(intersect,list(ntx_disc, ntx_rep, final_disc_dexdrim$tx_id)))
+
+p3 <- draw.triple.venn(ind=F, cat.fontfamily = "sans",
+		       fontfamily = "sans",
+		       area1 = length(ntx_disc),
+		       area2 = length(ntx_rep),
+		       area3 = length(final_disc_dexdrim$tx_id),
+		       n12 = n12, n13 = n13, n23 = n23, n123 = n123,
+		       category = c("Discovery", "Replication", "DTU events \n discovery cohort"),
+		       fill = c("red", "green", "blue"),
+		       ext.text = TRUE,
+		       label.col = "black",
+		       alpha = .4,
+		       rotation = 3)
+
+wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / (p1 | p2)
+
+tiff(paste0(plotOutDir,"S2Fig5.tiff"), width = 7, height = 9, res = 300, units = "in")
+wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / (p1 | p2)
+dev.off()
 
 
-
-p1 + p2
 ```
 
 

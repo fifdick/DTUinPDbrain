@@ -1360,7 +1360,7 @@ disc %>% kable(.) %>%
 
 S2 <- dplyr::bind_rows("discovery" = disc, "replication" = repl, .id = "cohort")
 # uncomment
-# write.table(S2, paste0(tableOutDir, "S1T2.txt"), quote = F, row.names = F, sep = "\t")
+ write.table(S2, paste0(tableOutDir, "S1S2.txt"), quote = F, row.names = F, sep = "\t")
 ```
 
 ### Supplement table for raw counts
@@ -1389,12 +1389,12 @@ tab %<>% dplyr::mutate(pres_after_filt_disc = ifelse(tx_id %in% discovery_tx, "y
 		       pres_after_filt_repl = ifelse(tx_id %in% replication_tx, "yes", "filtered out")) %>%
 	 dplyr::select(gene_name, gene_id, tx_id, tx_biotype, pres_after_filt_disc, pres_after_filt_repl, everything())
 
-# write.table(tab, paste0(tableOutDir, "S1S3.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
+ write.table(tab, paste0(tableOutDir, "S1S3.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 
 #Add metadata to S1
 tab  <- gdata::combine(obj$info$discovery, obj$info$replication, names = c("discovery", "replicaion")) %>%
 	dplyr::mutate(condition = ifelse(condition == 1, "Case", "Control"))
-# write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
+ write.table(tab, paste0(tableOutDir, "S1S4.txt"), sep = "\t", col.names = T, row.names = F, quote = F)
 ```
 
 ### Concordance of filtered transcripts
@@ -1457,17 +1457,7 @@ DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>%
 	dplyr::left_join(., sample_info, by = "sample_id") %>%
 	dplyr::mutate(Condition = ifelse(Condition == 1, "PD", "CT")) %>%
 	dplyr::group_by(feature_id) %>%
-	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value)) %>% 
-	ggplot(., aes(x = 1, y = infl_rin)) +
-		geom_violin() +
-		geom_boxplot(width = .2) +
-		scale_color_viridis_c() +
-		#facet_wrap(~ cohort, scales = "free_x") +
-		theme_linedraw() +
-		theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
-		labs(tag = "B", title = "Non concordant transcripts", y = "Corr.coeff. RIN and TPM") -> p1
+	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value)) -> non_conc_tx
 DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>% 
 	dplyr::filter(feature_id %in% tx_in_both) %>%
 		melt(.) %>%
@@ -1480,17 +1470,19 @@ DRIMSeq::counts(obj$Ds$Ds_drim$discovery) %>%
 	dplyr::left_join(., sample_info, by = "sample_id") %>%
 	dplyr::mutate(Condition = ifelse(Condition == 1, "PD", "CT")) %>%
 	dplyr::group_by(feature_id) %>%
-	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value)) %>% 
-	ggplot(., aes(x = 1, y = infl_rin)) +
+	dplyr::summarise(infl_rin = cor(value, RIN), med = median(value))  -> conc_tx
+gdata::combine(non_conc_tx, conc_tx, names = c("Discordant transcripts", "Concordant transcripts")) -> df
+	ggplot(df, aes(x = source, y = infl_rin)) +
 		geom_violin() +
 		geom_boxplot(width = .2) +
-		scale_color_viridis_c() +
+		ggpubr::stat_compare_means(label.x.npc = "middle") +
+		#scale_color_viridis_c() +
 		#facet_wrap(~ cohort, scales = "free_x") +
 		theme_linedraw() +
-		theme(axis.title.x=element_blank(),
-        	      axis.text.x=element_blank(),
-                      axis.ticks.x=element_blank()) +
-		labs(title = "Concordant transcripts", y = "Corr.coeff. RIN and TPM") -> p2
+	#	theme(axis.title.x=element_blank(),
+        #	      axis.text.x=element_blank(),
+         #             axis.ticks.x=element_blank()) +
+		labs(x = "", tag = "B", y = "Corr.coeff. RIN and TPM") -> p2
 
 n12=length(Reduce(intersect,list(ntx_disc,ntx_rep)))
 n13=length(Reduce(intersect,list(ntx_disc,final_disc_dexdrim$tx_id)))
@@ -1503,20 +1495,18 @@ p3 <- draw.triple.venn(ind=F, cat.fontfamily = "sans",
 		       area2 = length(ntx_rep),
 		       area3 = length(final_disc_dexdrim$tx_id),
 		       n12 = n12, n13 = n13, n23 = n23, n123 = n123,
-		       category = c("Discovery", "Replication", "DTU events \n discovery cohort"),
+		       category = c("Discovery", "Replication", "DTU\n (Discovery)"),
 		       fill = c("red", "green", "blue"),
 		       ext.text = TRUE,
 		       label.col = "black",
 		       alpha = .4,
-		       rotation = 3)
+		       rotation = 3,
+		       cat.cex = .8)
 
-wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / (p1 | p2)
 
 tiff(paste0(plotOutDir,"S2Fig5.tiff"), width = 7, height = 9, res = 300, units = "in")
-wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / (p1 | p2)
+wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / p2
 dev.off()
-
-
 ```
 
 

@@ -1166,6 +1166,36 @@ znf
 dev.off()
 ```
 
+### Additional qPCR experiments
+
+```{r}
+final_disc_drim %>% dplyr::filter(gene_name %in% c("BCHE", "THEM5")) -> candidates
+znfLab %>% dplyr::pull(sample_id) %>%
+	unique(.) %>%
+	gsub("-",".", .) -> test_samples
+DRIMSeq::proportions(obj$Ds$Ds_drim$replication) %>%
+	dplyr::filter(gene_id %in% candidates$gene_id) %>%
+	dplyr::select(gene_id, feature_id, any_of(test_samples)) %>%
+	dplyr::left_join(., DRIMSeq::proportions(obj$Ds$Ds_drim$discovery) %>%
+				dplyr::filter(gene_id %in% candidates$gene_id),# %>%
+				dplyr::select(gene_id, feature_id, any_of(test_samples)),
+		by = c("gene_id", "feature_id")) %>%
+	dplyr::left_join(., candidates %>% dplyr::select(gene_id, tx_id, gene_name),
+			  by = c("gene_id", "feature_id" = "tx_id")) -> df
+ 
+melt(df) %>%
+	dplyr::mutate(variable = ifelse(grepl("Ctr", variable), "CT", "PD")) %>%
+	ggplot(., aes(fill = variable, x = variable, y = value)) +
+	geom_boxplot() +
+	geom_point() +
+	facet_wrap(~gene_name + feature_id) +
+	theme_linedraw() +
+	stat_compare_means() +
+	scale_fill_viridis_d()
+
+```
+
+
 ### Differences in DTU genes due to cell correction with oligo and microglia estimates
 
 ```{r S3, echo=F}

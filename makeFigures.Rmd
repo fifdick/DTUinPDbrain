@@ -30,7 +30,7 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(ggpubr, patchwork, ggplotify, VennDiagram, cowplot, matrixStats,
 ggrepel, DTU, STRINGdb, knitr, Unicode, readr, DTU, tidyr, dplyr, ggplot2,
 viridis, ggridges, aggregation, PathCluster, gridExtra, kableExtra, reshape2,
-DRIMSeq, DEXSeq, wiggleplotr)
+DRIMSeq, DEXSeq, wiggleplotr, stringr, magrittr)
 colorFriendly <- c("pink" = "#CC79A7", "green" = "#009E73", "yellow" = "#F0E442", "orange" = "#E69F00", "blue" = "#0072B2")
 reloadDTU <- function(){
  detach(name="package:DTU",unload=T);
@@ -51,6 +51,7 @@ tableOutDir  <- "./results/tables/"
 # meta data file and qPCR result file
 metaDataFile <- "./metaData/phenoData.csv"
 znfLabFile <- "./results/external/qPCR/ZNF_lab_values.csv"
+bcheLabFile <- "./results/external/qPCR/BCHE_lab_values.csv"
 
 # Load differential gene expression results from:
 # RNASeq paper:
@@ -224,7 +225,7 @@ theme(strip.text = element_text(color = "white", face = "bold"))
 
 grid.arrange(p1, p2, p3)
 #svg(paste0(plotOutDir, "Figure3.svg"), width = 7, height = 9)
-tiff(paste0(plotOutDir, "Fig3.tiff"), width = 7, heigh = 8.75, units = "in", res = 300, compression = "lzw") 
+tiff(paste0(plotOutDir, "Fig3.tiff"), width = 7, heigh = 8.75, units = "in", res = 600, compression = "lzw") 
 grid.arrange(p1, p2, p3)
 dev.off()
 ```
@@ -343,7 +344,7 @@ p2 <- my_plotMA(dfTxLevel,title="B")
 p3 <- plot_pvalDist(dfGeneLevel,tag="C")
 
 p <- (p1/p2 + plot_layout(heights=c(1,2))) | p3 
-tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 10, height = 13, unit = "in", res = 300, compression = "lzw" )
+tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 10, height = 13, unit = "in", res = 600, compression = "lzw" )
 ((p1/p2 + plot_layout(heights=c(.5,.5))) | p3 ) + plot_layout(heights = c(.5,1)) 
 dev.off()
 ```
@@ -443,7 +444,7 @@ p3 <- makeplot(dfList[[3]], tag = "C", legend = "none")
 p4 <- makeplot(dfList[[4]], tag = "D", legend = "none")
 combined <- (p1 | p2) / (p3 | p4) #& theme(legend.position = "bottom")
 combined
-tiff(paste0(plotOutDir,"Fig4.tiff"),width=10,height=10,unit = "in", res = 300)
+tiff(paste0(plotOutDir,"Fig4.tiff"), width = 10, height = 10, unit = "in", res = 600, compression = "lzw")
 combined / guide_area() + plot_layout(guides = "collect",widths=c(3,1))
 dev.off() 
 ```
@@ -461,7 +462,7 @@ p3 <- makeplot(dfList[[3]], tag = "C", legend = "none")
 p4 <- makeplot(dfList[[4]],tag = "D", legend = "none")
 combined <- (p1 | p2) / (p3 | p4)
 combined
-tiff(paste0(plotOutDir,"S2Fig2.tiff"), width = 10, height = 10, unit = "in", res = 300)
+tiff(paste0(plotOutDir,"S2Fig2.tiff"), width = 10, height = 10, unit = "in", res = 600, compression = "lzw")
 combined / guide_area() + plot_layout(guides = "collect", widths = c(3,1))
 dev.off() 
 ```
@@ -582,7 +583,7 @@ esa_plot <- esa_plot +
 p <- p +
 	stat_cor()
 }
-tiff(paste0(plotOutDir,"Fig6.tiff"),width=12,height=12, unit = "in", res = 300)
+tiff(paste0(plotOutDir,"Fig6.tiff"), width = 12, height = 12, unit = "in", res = 600, compression = "lzw")
 esa_plot / p + plot_layout(widths=c(1.5,1))
 dev.off()
 ```
@@ -591,7 +592,6 @@ Agreement on direction of effect size
 (run previous chunk to create df used here)
 
 ```{r replicationCor}
-
 #df %<>% dplyr::filter(!(is.na(gene_id_repl)))
 # not sig in either cohort
 nonSig <- subset(df, sigCol == 1)
@@ -855,7 +855,7 @@ resultPlotBiotype <- ggplot(data = df, aes(x = tx_biotype, fill = Tool)) +
 	    label = paste0(perc,"% (",n," of ", sum_, ")"))) + 
     geom_bar(stat="identity") +
     facet_wrap(~variable) +
-    geom_text(aes(y = 0.4)) +
+    geom_text(aes(y = 15), size = 2.5) +
     scale_fill_manual(values = c("DEXSeq" = colorFriendly[["blue"]], 
 				 "DRIMSeq" = colorFriendly[["orange"]])) +
     theme_bw() +
@@ -888,7 +888,7 @@ lay<-rbind(c(1,NA,NA,NA),
 	   c(3,3,3,3))
 
 grid.arrange(textGrob("A"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
-tiff(paste0(plotOutDir,"Fig1.tiff"), width = 7, height = 9, res = 300, units = "in")
+tiff(paste0(plotOutDir,"Fig1.tiff"), width = 7, height = 9, res = 600, units = "in", compression = "lzw")
 grid.arrange(textGrob("A"),gTree(children=venn),resultPlotBiotype,layout_matrix=lay)
 dev.off()
 
@@ -970,7 +970,7 @@ OneTx <- ggplot(subset(dge, n == 1), aes(x = log2FoldChange, y = l2fc)) +
          theme(legend.position = "bottom") +
          labs(x = "Effect size DGE", y = "Effect size DTU", col = "Adj. p-value DGE", tag = "B")
 grid.arrange(twoTx,OneTx)       
-tiff(paste0(plotOutDir,"Fig5.tiff"), compression = "lzw", res = 300, width =7, height = 8.75, units = "in")
+tiff(paste0(plotOutDir,"Fig5.tiff"), compression = "lzw", res = 600, width =7, height = 8.75, units = "in")
 grid.arrange(twoTx,OneTx)
 dev.off()
 ```
@@ -1168,6 +1168,23 @@ dev.off()
 
 ### Additional qPCR experiments
 
+After revision and addition of one qPCR experiment, we created figure two manually.
+However, the data to create the figure as the original figure two above, can be loaded:
+
+
+```{r}
+bcheLab <- read.csv(bcheLabFile, sep = "\t") %>%
+	dplyr::select(tx_id, perc, condition, tx_biotype, sample_id)
+colnames(bcheLab) <- c("transcript_id", "frac", "condition", "tx_biotype", "sample_id")
+bcheLab %<>% dplyr::mutate(tx_id_label = (paste0(transcript_id, "\nprotein_coding"))) %>%
+	    dplyr::mutate(countType = rep("qPCR", nrow(bcheLab))) %>%
+	    dplyr::mutate(condition =  ifelse(condition == "CT", 0, 1)) 
+
+bcheLab
+```
+
+
+
 ```{r}
 final_disc_drim %>% dplyr::filter(gene_name %in% c("BCHE", "THEM5")) -> candidates
 znfLab %>% dplyr::pull(sample_id) %>%
@@ -1255,7 +1272,7 @@ venn.drim_g<-draw.pairwise.venn(ind=F,cat.fontfamily="sans", fontfamily="sans",a
 
 #((as.ggplot(grobTree(venn.drim_g)) + labs(tag="A")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="B")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="C") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="D")))
 
-tiff(paste0(plotOutDir,"./S2Fig3.tiff"), width=9, height=6, units = "in", res = 300, compression = "lzw")
+tiff(paste0(plotOutDir,"./S2Fig3.tiff"), width=9, height=6, units = "in", res = 600, compression = "lzw")
 ((as.ggplot(grobTree(venn.drim_g)) + labs(tag="A")) + (as.ggplot(grobTree(venn.dex_g))) + labs(tag="B")) / (( as.ggplot(grobTree(venn.drim)) + labs(tag="C") )+ (as.ggplot(grobTree(venn.dex)) + labs(tag="D")))
 dev.off()
 ```
@@ -1352,7 +1369,7 @@ allDTU_long %>%
 		theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
 		labs(tag = "B", y = "", x = "Model", fill = "L2fc") -> C
 
-tiff(paste0(plotOutDir,"./S2Fig4.tiff"), width=9, height=6, units = "in", res = 300, compression = "lzw")
+tiff(paste0(plotOutDir,"./S2Fig4.tiff"), width=9, height=6, units = "in", res = 600, compression = "lzw")
 A + C + B
 dev.off()
 
@@ -1534,7 +1551,7 @@ p3 <- draw.triple.venn(ind=F, cat.fontfamily = "sans",
 		       cat.cex = .8)
 
 
-tiff(paste0(plotOutDir,"S2Fig5.tiff"), width = 7, height = 9, res = 300, units = "in")
+tiff(paste0(plotOutDir,"S2Fig5.tiff"), width = 7, height = 9, res = 600, units = "in", compression = "lzw")
 wrap_elements(panel = as.ggplot(gTree(children = p3)) + ggtitle('A')) / p2
 dev.off()
 ```

@@ -1,6 +1,8 @@
 # Differential transcript usage in the Parkinson's disease brain 
 
-This repository holds all code and data to reproduce results, figures and tables presented in "Differential transcript usage in the Parkinson's disease brain". The main analysis was performed with
+This repository holds all code and data to reproduce results, figures and tables presented in "Differential transcript usage in the Parkinson's disease brain". 
+Direct access to result statistics, raw counts (in TPM) and sample metadata (covariates used in the analysis) are available at: [Figshare](https://figshare.com/articles/dataset/Differential_transcript_usage_in_the_Parkinson_s_disease_brain/12941945).
+The main analysis was performed with
 [DEXSeq](https://bioconductor.org/packages/release/bioc/html/DEXSeq.html), [DRIMSeq](https://bioconductor.org/packages/release/bioc/html/DRIMSeq.html) and [stageR](https://www.bioconductor.org/packages/release/bioc/html/stageR.html). The application of these tools for DTU analysis was performed as suggested in [Swimming downstream: statistical analysis of differential transcript usage following Salmon quantification.](https://www.ncbi.nlm.nih.gov/pubmed/30356428).  
 
 ## Prerequisites

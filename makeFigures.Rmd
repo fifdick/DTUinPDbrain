@@ -195,11 +195,11 @@ dplyr::group_by(df,Filter) %>% dplyr::summarise(median(rowMeans),sd(rowMeans))
 
 p1 <- ggplot(df, aes(x = log10(rowMeans), col = Filter)) +
 	geom_histogram(aes(y = ..density.., fill = Filter), alpha = 0.4, bins = 100) +
-	geom_density(size = 1.1) +
+	geom_density(size = 1.1, aes(y = ..density..)) +
 	scale_x_continuous(name = "log10(mean CPM)", limits = c(-8,10)) +
 	theme_bw() +
-	scale_color_manual(values = c("deepskyblue3", "darkblue"))+
-	scale_fill_manual(values = c("deepskyblue3", "darkblue"))+	
+	scale_color_manual(values = c("before" = "deepskyblue3", "after" = "darkblue")) +
+	scale_fill_manual(values = c("before" = "deepskyblue3", "after" = "darkblue"))+	
 	labs(title = "A")
 p2 <- ggplot(ntxInfo, aes(x = Filter, y = log10(ntx))) +
 	geom_violin(scale = "count", aes(fill = Filter)) +

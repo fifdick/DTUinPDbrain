@@ -27,7 +27,7 @@ Make sure you installed './DTU' and './PathCluster'.
 
 ```{r dependencies}
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(ggpubr, patchwork, ggplotify, VennDiagram, cowplot, matrixStats,
+pacman::p_load(magrittr, ggpubr, patchwork, ggplotify, VennDiagram, cowplot, matrixStats,
 ggrepel, DTU, STRINGdb, knitr, Unicode, readr, DTU, tidyr, dplyr, ggplot2,
 viridis, ggridges, aggregation, PathCluster, gridExtra, kableExtra, reshape2,
 DRIMSeq, DEXSeq, wiggleplotr)
@@ -290,16 +290,17 @@ ggplot(df) +
 	geom_point(aes(x=l2fc,y=-log10(nom_pval),col=as.factor(sig),shape=outlier),alpha=0.3,show.legend=F) +
 	geom_hline(yintercept=0)  +
 	scale_color_manual(labels=c("TRUE"="p-value < 0.05","FALSE" = "not signif."),values=c("TRUE"="red","FALSE"="grey")) +
-	labs(y="-log10(p-value)",x="effect size",col="Significance",tag=title) +
+	labs(y="-log10(p-value)",x="Effect size",col="Significance",tag=title) +
 	facet_wrap(~tool)+#,scales="free_y") +
-	#coord_fixed() +
+	coord_fixed() +
 	geom_vline(xintercept=-0.1,col="grey39") +
 	geom_vline(xintercept=.1,col="grey39") +
 	geom_hline(yintercept=-log10(alpha),col="darkblue",lty="dotted") +
 		theme_bw() +
 theme(plot.title = element_text(hjust = 0.5)) +
 theme(strip.background=element_rect(fill="black")) + 
-theme(strip.text= element_text(color="white",face="bold")) 	
+theme(strip.text= element_text(color="white",face="bold" )) +
+theme(legend.position = "bottom")
 
 }
 
@@ -314,6 +315,7 @@ ggplot(df, aes(x=log10(meanExpr),y=l2fc,col=as.factor(sig))) +
 	scale_color_manual(labels=c("TRUE"="< 0.05","FALSE" = ">= 0.05"),values=c("TRUE"="red","FALSE"="grey")) +
 	labs(x="log10(mean expression)",y="Effect size",col="Nom. p-value",tag=title) +
 		theme_bw() +
+		coord_fixed() +
 theme(plot.title = element_text(hjust = 0.5)) +
 theme(strip.background=element_rect(fill="black")) +
 theme(strip.text= element_text(color="white",face="bold"))  +
@@ -335,16 +337,19 @@ theme_bw() +
 theme(plot.title = element_text(hjust = 0.5)) +
 theme(strip.background=element_rect(fill="black")) +
 theme(strip.text= element_text(color="white",face="bold")) 	+
-labs(tag=tag,fill="Tool",x="gene-level p-value",y="density") 
+labs(tag=tag,fill="Tool",x="Gene-level p-value",y="Density") 
 }
 
 p1 <- plotVolcano(dfTxLevel,title="A")
 p2 <- my_plotMA(dfTxLevel,title="B")	
 p3 <- plot_pvalDist(dfGeneLevel,tag="C")
 
+(p1 / p2) | p3
+
 p <- (p1/p2 + plot_layout(heights=c(1,2))) | p3 
-tiff(paste0(plotOutDir,"S2Fig1.tiff"),width = 10, height = 13, unit = "in", res = 300, compression = "lzw" )
-((p1/p2 + plot_layout(heights=c(.5,.5))) | p3 ) + plot_layout(heights = c(.5,1)) 
+tiff(paste0(plotOutDir,"S2Fig1.tiff"), res = 600, units = "in", width = 10, height = 13, compression = "lzw")
+(p1 / p2 / plot_spacer() + plot_layout(c(heights = c(1, 1, 0.5)))) | p3
+#((p1/p2 + plot_layout(heights=c(.5,.5))) | p3 ) + plot_layout(heights = c(.5,1)) 
 dev.off()
 ```
 
